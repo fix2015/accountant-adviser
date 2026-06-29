@@ -1,4 +1,5 @@
 import io
+import re
 from datetime import datetime
 
 from openai import OpenAI
@@ -6,10 +7,14 @@ from reportlab.lib.pagesizes import A4
 from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
 from reportlab.lib.units import mm
 from reportlab.lib.colors import HexColor
+from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
     Spacer,
+    Table,
+    TableStyle,
+    HRFlowable,
 )
 from sqlalchemy.orm import Session
 
@@ -186,6 +191,163 @@ def get_consultation_messages(
     return messages, total
 
 
+def _escape(text: str) -> str:
+    """Escape text for ReportLab XML."""
+    return text.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+
+
+def _md_to_elements(md_text: str, styles: dict) -> list:
+    """Convert markdown-formatted AI response text to ReportLab flowable elements."""
+    elements = []
+    lines = md_text.split("\n")
+    i = 0
+    table_rows = []
+
+    while i < len(lines):
+        line = lines[i].rstrip()
+
+        # Skip empty lines
+        if not line.strip():
+            if table_rows:
+                # Flush table
+                elements.extend(_build_table(table_rows, styles))
+                table_rows = []
+            i += 1
+            continue
+
+        # Markdown table row: | col1 | col2 | col3 |
+        if "|" in line and line.strip().startswith("|"):
+            cells = [c.strip() for c in line.strip().strip("|").split("|")]
+            # Skip separator rows like |---|---|---|
+            if all(re.match(r"^[-:]+$", c) for c in cells):
+                i += 1
+                continue
+            table_rows.append(cells)
+            i += 1
+            continue
+
+        # Flush any pending table
+        if table_rows:
+            elements.extend(_build_table(table_rows, styles))
+            table_rows = []
+
+        stripped = line.strip()
+
+        # Headings
+        if stripped.startswith("### "):
+            text = _escape(stripped[4:])
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            elements.append(Paragraph(text, styles["h3"]))
+        elif stripped.startswith("## "):
+            text = _escape(stripped[3:])
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            elements.append(Paragraph(text, styles["h2"]))
+        elif stripped.startswith("# "):
+            text = _escape(stripped[2:])
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            elements.append(Paragraph(text, styles["h1"]))
+
+        # Numbered list: 1. item or 1) item
+        elif re.match(r"^\d+[\.\)]\s", stripped):
+            text = _escape(re.sub(r"^\d+[\.\)]\s*", "", stripped))
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            num = re.match(r"^(\d+)", stripped).group(1)
+            elements.append(
+                Paragraph(
+                    f"<b>{num}.</b>  {text}",
+                    styles["list_item"],
+                )
+            )
+
+        # Bullet list: - item or * item
+        elif stripped.startswith("- ") or stripped.startswith("* "):
+            text = _escape(stripped[2:])
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            elements.append(Paragraph(f"\u2022  {text}", styles["bullet"]))
+
+        # Bold line (entire line is **text**)
+        elif stripped.startswith("**") and stripped.endswith("**"):
+            text = _escape(stripped[2:-2])
+            elements.append(Paragraph(f"<b>{text}</b>", styles["bold_body"]))
+
+        # Regular paragraph
+        else:
+            text = _escape(stripped)
+            # Convert inline **bold**
+            text = re.sub(r"\*\*(.+?)\*\*", r"<b>\1</b>", text)
+            # Convert inline `code`
+            text = re.sub(
+                r"`(.+?)`",
+                r'<font face="Courier" size="9" color="#2d4a7c">\1</font>',
+                text,
+            )
+            elements.append(Paragraph(text, styles["body"]))
+
+        i += 1
+
+    # Flush remaining table
+    if table_rows:
+        elements.extend(_build_table(table_rows, styles))
+
+    return elements
+
+
+def _build_table(rows: list[list[str]], styles: dict) -> list:
+    """Build a styled ReportLab Table from parsed markdown table rows."""
+    if not rows:
+        return []
+
+    navy = HexColor("#1a365d")
+    light_blue = HexColor("#eef2f8")
+    border_color = HexColor("#c8d4e3")
+    white = HexColor("#ffffff")
+
+    # Build table data with Paragraphs for word wrapping
+    max_cols = max(len(r) for r in rows)
+    table_data = []
+    for ri, row in enumerate(rows):
+        # Pad rows to same column count
+        padded = row + [""] * (max_cols - len(row))
+        style = styles["table_header"] if ri == 0 else styles["table_cell"]
+        table_data.append([Paragraph(_escape(cell), style) for cell in padded])
+
+    # Calculate column widths (equal distribution)
+    page_width = A4[0] - 40 * mm  # minus margins
+    col_width = page_width / max_cols
+
+    table = Table(table_data, colWidths=[col_width] * max_cols)
+
+    # Style
+    table_style_commands = [
+        # Header row
+        ("BACKGROUND", (0, 0), (-1, 0), navy),
+        ("TEXTCOLOR", (0, 0), (-1, 0), white),
+        ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+        ("FONTSIZE", (0, 0), (-1, 0), 9),
+        ("BOTTOMPADDING", (0, 0), (-1, 0), 8),
+        ("TOPPADDING", (0, 0), (-1, 0), 8),
+        # Body rows
+        ("FONTNAME", (0, 1), (-1, -1), "Helvetica"),
+        ("FONTSIZE", (0, 1), (-1, -1), 9),
+        ("BOTTOMPADDING", (0, 1), (-1, -1), 6),
+        ("TOPPADDING", (0, 1), (-1, -1), 6),
+        # Grid
+        ("GRID", (0, 0), (-1, -1), 0.5, border_color),
+        ("VALIGN", (0, 0), (-1, -1), "TOP"),
+        ("LEFTPADDING", (0, 0), (-1, -1), 6),
+        ("RIGHTPADDING", (0, 0), (-1, -1), 6),
+    ]
+
+    # Alternating row colors
+    for ri in range(1, len(table_data)):
+        if ri % 2 == 0:
+            table_style_commands.append(("BACKGROUND", (0, ri), (-1, ri), light_blue))
+
+    table.setStyle(TableStyle(table_style_commands))
+
+    return [Spacer(1, 3 * mm), table, Spacer(1, 3 * mm)]
+
+
 def generate_strategy_report_pdf(
     db: Session, consultation_id: int, title: str
 ) -> bytes:
@@ -199,6 +361,15 @@ def generate_strategy_report_pdf(
         .order_by(Message.created_at.asc())
         .all()
     )
+    user_messages = (
+        db.query(Message)
+        .filter(
+            Message.consultation_id == consultation_id,
+            Message.role == MessageRole.USER,
+        )
+        .order_by(Message.created_at.asc())
+        .all()
+    )
 
     knowledge_text = get_knowledge_base_text(db, consultation_id)
 
@@ -207,155 +378,411 @@ def generate_strategy_report_pdf(
         buffer,
         pagesize=A4,
         topMargin=20 * mm,
-        bottomMargin=20 * mm,
+        bottomMargin=25 * mm,
         leftMargin=20 * mm,
         rightMargin=20 * mm,
     )
 
-    styles = getSampleStyleSheet()
+    base_styles = getSampleStyleSheet()
 
-    # Custom styles
-    title_style = ParagraphStyle(
-        "CustomTitle",
-        parent=styles["Title"],
-        fontSize=24,
-        textColor=HexColor("#1a365d"),
-        spaceAfter=10 * mm,
-    )
-    heading_style = ParagraphStyle(
-        "CustomHeading",
-        parent=styles["Heading1"],
-        fontSize=16,
-        textColor=HexColor("#2d4a7c"),
-        spaceBefore=8 * mm,
-        spaceAfter=4 * mm,
-    )
-    subheading_style = ParagraphStyle(
-        "CustomSubheading",
-        parent=styles["Heading2"],
-        fontSize=13,
-        textColor=HexColor("#4a6fa5"),
-        spaceBefore=5 * mm,
-        spaceAfter=3 * mm,
-    )
-    body_style = ParagraphStyle(
-        "CustomBody",
-        parent=styles["Normal"],
-        fontSize=10,
-        leading=14,
-        spaceAfter=3 * mm,
-    )
-    disclaimer_style = ParagraphStyle(
-        "Disclaimer",
-        parent=styles["Normal"],
-        fontSize=8,
-        textColor=HexColor("#666666"),
-        leading=11,
-        spaceBefore=10 * mm,
-    )
-    brand_style = ParagraphStyle(
-        "Brand",
-        parent=styles["Normal"],
-        fontSize=10,
-        textColor=HexColor("#999999"),
-        alignment=1,
-    )
+    # Define all custom styles
+    navy = HexColor("#1a365d")
+    dark_blue = HexColor("#2d4a7c")
+    medium_blue = HexColor("#4a6fa5")
+    accent = HexColor("#3b82f6")
+    dark_text = HexColor("#1f2937")
+    muted_text = HexColor("#6b7280")
+    light_bg = HexColor("#f0f4f8")
+
+    s = {
+        "title": ParagraphStyle(
+            "RptTitle",
+            parent=base_styles["Title"],
+            fontSize=26,
+            textColor=navy,
+            spaceAfter=3 * mm,
+            leading=32,
+        ),
+        "subtitle": ParagraphStyle(
+            "RptSubtitle",
+            parent=base_styles["Normal"],
+            fontSize=11,
+            textColor=muted_text,
+            spaceAfter=8 * mm,
+        ),
+        "h1": ParagraphStyle(
+            "RptH1",
+            parent=base_styles["Heading1"],
+            fontSize=18,
+            textColor=navy,
+            spaceBefore=10 * mm,
+            spaceAfter=4 * mm,
+            borderWidth=0,
+            borderPadding=0,
+        ),
+        "h2": ParagraphStyle(
+            "RptH2",
+            parent=base_styles["Heading2"],
+            fontSize=14,
+            textColor=dark_blue,
+            spaceBefore=6 * mm,
+            spaceAfter=3 * mm,
+        ),
+        "h3": ParagraphStyle(
+            "RptH3",
+            parent=base_styles["Heading3"],
+            fontSize=11,
+            textColor=medium_blue,
+            spaceBefore=4 * mm,
+            spaceAfter=2 * mm,
+        ),
+        "body": ParagraphStyle(
+            "RptBody",
+            parent=base_styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=dark_text,
+            spaceAfter=2 * mm,
+        ),
+        "bold_body": ParagraphStyle(
+            "RptBoldBody",
+            parent=base_styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=dark_text,
+            spaceAfter=2 * mm,
+        ),
+        "bullet": ParagraphStyle(
+            "RptBullet",
+            parent=base_styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=dark_text,
+            leftIndent=12,
+            spaceAfter=1.5 * mm,
+        ),
+        "list_item": ParagraphStyle(
+            "RptListItem",
+            parent=base_styles["Normal"],
+            fontSize=10,
+            leading=15,
+            textColor=dark_text,
+            leftIndent=12,
+            spaceAfter=1.5 * mm,
+        ),
+        "question": ParagraphStyle(
+            "RptQuestion",
+            parent=base_styles["Normal"],
+            fontSize=9,
+            leading=13,
+            textColor=muted_text,
+            leftIndent=6,
+            borderColor=HexColor("#e5e7eb"),
+            borderWidth=0,
+            spaceAfter=2 * mm,
+            fontName="Helvetica-Oblique",
+        ),
+        "table_header": ParagraphStyle(
+            "RptTableHeader",
+            parent=base_styles["Normal"],
+            fontSize=9,
+            leading=12,
+            textColor=HexColor("#ffffff"),
+            fontName="Helvetica-Bold",
+        ),
+        "table_cell": ParagraphStyle(
+            "RptTableCell",
+            parent=base_styles["Normal"],
+            fontSize=9,
+            leading=12,
+            textColor=dark_text,
+        ),
+        "disclaimer": ParagraphStyle(
+            "RptDisclaimer",
+            parent=base_styles["Normal"],
+            fontSize=7.5,
+            textColor=muted_text,
+            leading=10,
+            spaceBefore=8 * mm,
+        ),
+        "brand": ParagraphStyle(
+            "RptBrand",
+            parent=base_styles["Normal"],
+            fontSize=9,
+            textColor=accent,
+            alignment=TA_CENTER,
+        ),
+        "brand_sub": ParagraphStyle(
+            "RptBrandSub",
+            parent=base_styles["Normal"],
+            fontSize=8,
+            textColor=muted_text,
+            alignment=TA_CENTER,
+        ),
+        "footer_line": ParagraphStyle(
+            "RptFooterLine",
+            parent=base_styles["Normal"],
+            fontSize=8,
+            textColor=muted_text,
+            alignment=TA_RIGHT,
+        ),
+    }
 
     elements = []
 
-    # Header
-    elements.append(Paragraph("AI Accountant Adviser", brand_style))
-    elements.append(Spacer(1, 5 * mm))
-    elements.append(Paragraph(title, title_style))
+    # ─── Cover / Header ───────────────────────────────────────
+    elements.append(Spacer(1, 15 * mm))
+    elements.append(Paragraph("AI Accountant Adviser", s["brand"]))
+    elements.append(Paragraph("Powered by Advanced AI Technology", s["brand_sub"]))
+    elements.append(Spacer(1, 10 * mm))
     elements.append(
-        Paragraph(
-            f"Generated on {datetime.utcnow().strftime('%d %B %Y')}",
-            body_style,
+        HRFlowable(
+            width="100%", thickness=2, color=accent, spaceBefore=0, spaceAfter=5 * mm
         )
     )
-    elements.append(Spacer(1, 10 * mm))
+    elements.append(Paragraph(title, s["title"]))
+    elements.append(
+        Paragraph(
+            f"Generated on {datetime.utcnow().strftime('%d %B %Y')}  \u2022  "
+            f"Consultation #{consultation_id}  \u2022  "
+            f"{len(messages)} AI responses  \u2022  "
+            f"{len(user_messages)} questions asked",
+            s["subtitle"],
+        )
+    )
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=0.5,
+            color=HexColor("#e5e7eb"),
+            spaceBefore=2 * mm,
+            spaceAfter=5 * mm,
+        )
+    )
 
-    # Executive Summary
-    elements.append(Paragraph("Executive Summary", heading_style))
+    # ─── Table of Contents ────────────────────────────────────
+    toc_data = [
+        ["Section", "Page"],
+        ["1. Executive Summary", "2"],
+        ["2. Financial Overview", "2"],
+        ["3. Tax Optimisation Strategies", "3"],
+        ["4. Recommended Actions", "-"],
+        ["5. Disclaimer", "-"],
+    ]
+    toc_table = Table(toc_data, colWidths=[130 * mm, 25 * mm])
+    toc_table.setStyle(
+        TableStyle(
+            [
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("TEXTCOLOR", (0, 0), (-1, 0), navy),
+                ("TEXTCOLOR", (0, 1), (-1, -1), dark_text),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 4),
+                ("TOPPADDING", (0, 0), (-1, -1), 4),
+                ("LINEBELOW", (0, 0), (-1, 0), 1, navy),
+                ("LINEBELOW", (0, -1), (-1, -1), 0.5, HexColor("#e5e7eb")),
+                ("ALIGN", (1, 0), (1, -1), "CENTER"),
+            ]
+        )
+    )
+    elements.append(toc_table)
+
+    # ─── 1. Executive Summary ─────────────────────────────────
+    elements.append(Paragraph("1. Executive Summary", s["h1"]))
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=1,
+            color=accent,
+            spaceBefore=0,
+            spaceAfter=4 * mm,
+        )
+    )
     elements.append(
         Paragraph(
             "This report summarises the AI-generated tax optimisation strategies "
-            "based on your uploaded financial documents and consultation Q&A sessions. "
-            "All recommendations should be reviewed by a qualified chartered accountant "
-            "before implementation.",
-            body_style,
+            "based on your uploaded financial documents and consultation Q&amp;A sessions. "
+            "The strategies below were tailored to your specific financial situation "
+            "using current UK tax regulations and rates.",
+            s["body"],
         )
     )
 
-    # Financial Overview from knowledge base
-    elements.append(Paragraph("Financial Overview", heading_style))
+    # Summary stats table
+    summary_data = [
+        ["Metric", "Value"],
+        ["Questions Asked", str(len(user_messages))],
+        ["AI Responses", str(len(messages))],
+        ["Consultation Type", "Full Consultation"],
+        ["Tax Year", "2025/26"],
+    ]
+    summary_table = Table(summary_data, colWidths=[80 * mm, 75 * mm])
+    summary_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), navy),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#ffffff")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#c8d4e3")),
+                ("ROWBACKGROUNDS", (0, 1), (-1, -1), [HexColor("#ffffff"), light_bg]),
+                ("LEFTPADDING", (0, 0), (-1, -1), 8),
+            ]
+        )
+    )
+    elements.append(Spacer(1, 3 * mm))
+    elements.append(summary_table)
+
+    # ─── 2. Financial Overview ────────────────────────────────
+    elements.append(Paragraph("2. Financial Overview", s["h1"]))
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=1,
+            color=accent,
+            spaceBefore=0,
+            spaceAfter=4 * mm,
+        )
+    )
     if knowledge_text and "No documents" not in knowledge_text:
-        # Parse knowledge text sections
-        for line in knowledge_text.split("\n"):
-            line = line.strip()
-            if not line:
-                continue
-            if line.startswith("##"):
-                elements.append(
-                    Paragraph(line.replace("##", "").strip(), subheading_style)
-                )
-            elif line.startswith("-"):
-                safe_line = (
-                    line[1:]
-                    .strip()
-                    .replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
-                )
-                elements.append(Paragraph(f"  {safe_line}", body_style))
-            else:
-                safe_line = (
-                    line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-                )
-                elements.append(Paragraph(safe_line, body_style))
+        elements.extend(_md_to_elements(knowledge_text, s))
     else:
         elements.append(
-            Paragraph("No financial documents were uploaded for analysis.", body_style)
+            Paragraph("No financial documents were uploaded for analysis.", s["body"])
         )
 
-    # Tax Optimisation Strategies
-    elements.append(Paragraph("Tax Optimisation Strategies", heading_style))
+    # ─── 3. Tax Optimisation Strategies ───────────────────────
+    elements.append(Paragraph("3. Tax Optimisation Strategies", s["h1"]))
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=1,
+            color=accent,
+            spaceBefore=0,
+            spaceAfter=4 * mm,
+        )
+    )
+
     if messages:
-        for i, msg in enumerate(messages, 1):
-            elements.append(Paragraph(f"Strategy Discussion {i}", subheading_style))
-            # Clean and escape message content for PDF
-            content = msg.content[:3000]  # Limit length
-            content = (
-                content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
-            )
-            # Split long content into paragraphs
-            for para in content.split("\n"):
-                para = para.strip()
-                if para:
-                    elements.append(Paragraph(para, body_style))
+        # Pair user questions with AI responses
+        all_msgs = (
+            db.query(Message)
+            .filter(Message.consultation_id == consultation_id)
+            .order_by(Message.created_at.asc())
+            .all()
+        )
+
+        strategy_num = 0
+        for msg in all_msgs:
+            if msg.role == MessageRole.USER:
+                elements.append(
+                    Paragraph(
+                        f'<i>Q: "{_escape(msg.content[:200])}"</i>',
+                        s["question"],
+                    )
+                )
+            elif msg.role == MessageRole.ASSISTANT:
+                strategy_num += 1
+                elements.append(Paragraph(f"Response {strategy_num}", s["h2"]))
+                # Parse markdown content into proper PDF elements
+                content = msg.content[:5000]
+                elements.extend(_md_to_elements(content, s))
+                elements.append(Spacer(1, 3 * mm))
+                elements.append(
+                    HRFlowable(
+                        width="60%",
+                        thickness=0.5,
+                        color=HexColor("#e5e7eb"),
+                        spaceBefore=2 * mm,
+                        spaceAfter=2 * mm,
+                    )
+                )
     else:
         elements.append(
             Paragraph(
                 "No consultation messages yet. Start a chat to receive strategies.",
-                body_style,
+                s["body"],
             )
         )
 
-    # Recommended Actions
-    elements.append(Paragraph("Recommended Actions", heading_style))
-    actions = [
-        "Review all strategies with a qualified chartered accountant",
-        "Ensure compliance with current HMRC regulations",
-        "Keep all supporting documentation for at least 6 years",
-        "Consider scheduling a follow-up consultation for ongoing advice",
-        "Implement strategies in order of potential tax savings",
-    ]
-    for i, action in enumerate(actions, 1):
-        elements.append(Paragraph(f"{i}. {action}", body_style))
+    # ─── 4. Recommended Actions ───────────────────────────────
+    elements.append(Paragraph("4. Recommended Next Steps", s["h1"]))
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=1,
+            color=accent,
+            spaceBefore=0,
+            spaceAfter=4 * mm,
+        )
+    )
 
-    # Disclaimer
+    actions = [
+        ["Priority", "Action", "Deadline"],
+        [
+            "HIGH",
+            "Review all strategies with a qualified chartered accountant",
+            "Within 2 weeks",
+        ],
+        [
+            "HIGH",
+            "Implement salary/dividend split changes before next payroll",
+            "Next payroll date",
+        ],
+        [
+            "MEDIUM",
+            "Ensure compliance with current HMRC regulations",
+            "Ongoing",
+        ],
+        [
+            "MEDIUM",
+            "Keep all supporting documentation for at least 6 years",
+            "Ongoing",
+        ],
+        [
+            "LOW",
+            "Schedule a follow-up consultation for ongoing advice",
+            "Quarterly",
+        ],
+    ]
+    action_table = Table(actions, colWidths=[25 * mm, 95 * mm, 35 * mm])
+    action_table.setStyle(
+        TableStyle(
+            [
+                ("BACKGROUND", (0, 0), (-1, 0), navy),
+                ("TEXTCOLOR", (0, 0), (-1, 0), HexColor("#ffffff")),
+                ("FONTNAME", (0, 0), (-1, 0), "Helvetica-Bold"),
+                ("FONTSIZE", (0, 0), (-1, -1), 9),
+                ("BOTTOMPADDING", (0, 0), (-1, -1), 6),
+                ("TOPPADDING", (0, 0), (-1, -1), 6),
+                ("GRID", (0, 0), (-1, -1), 0.5, HexColor("#c8d4e3")),
+                (
+                    "ROWBACKGROUNDS",
+                    (0, 1),
+                    (-1, -1),
+                    [HexColor("#ffffff"), light_bg],
+                ),
+                ("LEFTPADDING", (0, 0), (-1, -1), 6),
+                ("VALIGN", (0, 0), (-1, -1), "TOP"),
+            ]
+        )
+    )
+    elements.append(action_table)
+
+    # ─── 5. Disclaimer ────────────────────────────────────────
     elements.append(Spacer(1, 10 * mm))
-    elements.append(Paragraph("Disclaimer", heading_style))
+    elements.append(
+        HRFlowable(
+            width="100%",
+            thickness=0.5,
+            color=HexColor("#e5e7eb"),
+            spaceBefore=0,
+            spaceAfter=3 * mm,
+        )
+    )
+    elements.append(Paragraph("<b>5. Disclaimer</b>", s["body"]))
     elements.append(
         Paragraph(
             "IMPORTANT: This report contains AI-generated advice and should NOT be "
@@ -366,15 +793,22 @@ def generate_strategy_report_pdf(
             "financial decisions. We accept no liability for any actions taken based on "
             "the content of this report. All tax optimisation strategies must be verified "
             "against current HMRC regulations and your specific circumstances.",
-            disclaimer_style,
+            s["disclaimer"],
         )
     )
 
-    elements.append(Spacer(1, 5 * mm))
+    elements.append(Spacer(1, 8 * mm))
+    elements.append(
+        HRFlowable(
+            width="100%", thickness=1, color=accent, spaceBefore=0, spaceAfter=3 * mm
+        )
+    )
+    elements.append(Paragraph("AI Accountant Adviser", s["brand"]))
     elements.append(
         Paragraph(
-            "AI Accountant Adviser - Powered by Advanced AI Technology",
-            brand_style,
+            "ai-adviser.probooking.app  \u2022  Powered by GPT-4o  \u2022  "
+            f"\u00a9 {datetime.utcnow().year}",
+            s["brand_sub"],
         )
     )
 

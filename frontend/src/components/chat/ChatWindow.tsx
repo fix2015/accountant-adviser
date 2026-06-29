@@ -4,7 +4,6 @@ import { ChatMessage, StreamingMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QuestionCounter } from "./QuestionCounter";
 import { useChat } from "@/hooks/useChat";
-import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Bot, Sparkles, Zap } from "lucide-react";
 import { getActiveConsultation } from "@/api/payments";
@@ -12,7 +11,6 @@ import { getChatSuggestions } from "@/api/chat";
 import type { ConsultationInfo } from "@/types";
 
 export function ChatWindow() {
-  const { refreshUser } = useAuth();
   const { messages, isStreaming, streamingContent, error, sendMessage, stopStreaming, loadHistory } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
@@ -36,24 +34,27 @@ export function ChatWindow() {
       .catch(() => setConsultation(null));
   }, [loadHistory]);
 
+  // Refresh question counter + suggestions after streaming completes
+  const prevStreamingRef = useRef(false);
+  useEffect(() => {
+    if (prevStreamingRef.current && !isStreaming) {
+      // Streaming just finished — refresh counter and suggestions
+      getActiveConsultation()
+        .then(setConsultation)
+        .catch(() => {});
+      loadSuggestions();
+    }
+    prevStreamingRef.current = isStreaming;
+  }, [isStreaming]);
+
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages, streamingContent]);
 
-  const handleSend = async (content: string) => {
+  const handleSend = (content: string) => {
     sendMessage(content);
-    refreshUser();
-    // Refresh consultation + suggestions after sending
-    try {
-      const updated = await getActiveConsultation();
-      setConsultation(updated);
-    } catch {
-      // ignore
-    }
-    // Delay suggestion refresh to let the response complete
-    setTimeout(loadSuggestions, 3000);
   };
 
   return (
