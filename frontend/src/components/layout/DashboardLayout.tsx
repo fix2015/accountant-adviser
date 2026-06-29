@@ -82,6 +82,7 @@ export function DashboardLayout() {
               <LogOut className="h-4 w-4" />
             </button>
           </div>
+          <p className="text-[10px] text-ds-text-muted text-center mt-2">v{__APP_VERSION__}</p>
         </div>
       </aside>
 
