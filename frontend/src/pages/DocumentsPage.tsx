@@ -26,7 +26,7 @@ export function DocumentsPage() {
   };
 
   return (
-    <div className="p-6 max-w-4xl mx-auto space-y-8">
+    <div className="p-6 max-w-4xl mx-auto space-y-8 h-full overflow-auto">
       <div>
         <h1 className="text-2xl font-bold text-ds-text-primary">Documents</h1>
         <p className="text-sm text-ds-text-secondary mt-1">

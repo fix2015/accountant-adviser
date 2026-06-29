@@ -7,12 +7,12 @@ export async function getChatSession(): Promise<ChatSession> {
 }
 
 export async function getChatHistory(): Promise<ChatMessage[]> {
-  const response = await client.get<ChatMessage[]>("/chat/history");
-  return response.data;
+  const response = await client.get<{ messages: ChatMessage[]; total: number }>("/chat/history");
+  return response.data.messages;
 }
 
 export async function sendMessage(content: string): Promise<ChatMessage> {
-  const response = await client.post<ChatMessage>("/chat/message", { content });
+  const response = await client.post<ChatMessage>("/chat/send", { message: content });
   return response.data;
 }
 
@@ -25,13 +25,13 @@ export function streamMessage(
   const token = localStorage.getItem("access_token");
   const controller = new AbortController();
 
-  fetch("/api/chat/stream", {
+  fetch("/api/v1/chat/send/stream", {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ content }),
+    body: JSON.stringify({ message: content }),
     signal: controller.signal,
   })
     .then(async (response) => {

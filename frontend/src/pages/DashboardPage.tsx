@@ -78,7 +78,7 @@ export function DashboardPage() {
   const questionsLeft = questionsLimit - questionsUsed;
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-6 space-y-6 h-full overflow-auto">
       {/* Trial banner */}
       {consultation.is_trial && (
         <motion.div

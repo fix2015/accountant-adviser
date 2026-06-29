@@ -37,7 +37,13 @@ export function LoginPage() {
       await login(data.email, data.password);
       navigate("/dashboard");
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : "Invalid credentials. Please try again.";
+      let message = "Invalid credentials. Please try again.";
+      if (err && typeof err === "object" && "response" in err) {
+        const axiosErr = err as { response?: { data?: { detail?: string } } };
+        message = axiosErr.response?.data?.detail || message;
+      } else if (err instanceof Error) {
+        message = err.message;
+      }
       setError(message);
     } finally {
       setIsLoading(false);
