@@ -49,10 +49,29 @@ def extract_text_from_pdf(file_content: bytes) -> str:
     reader = PdfReader(io.BytesIO(file_content))
     text_parts = []
     for page in reader.pages:
-        page_text = page.extract_text()
-        if page_text:
-            text_parts.append(page_text)
-    return "\n\n".join(text_parts)
+        try:
+            page_text = page.extract_text()
+            if page_text and page_text.strip():
+                text_parts.append(page_text)
+        except Exception:
+            continue
+    result = "\n\n".join(text_parts)
+    if not result.strip():
+        # Fallback: try extracting with layout mode
+        try:
+            reader2 = PdfReader(io.BytesIO(file_content))
+            for page in reader2.pages:
+                page_text = page.extract_text(extraction_mode="layout")
+                if page_text and page_text.strip():
+                    text_parts.append(page_text)
+            result = "\n\n".join(text_parts)
+        except Exception:
+            pass
+    return (
+        result
+        if result.strip()
+        else "PDF content could not be extracted automatically."
+    )
 
 
 def extract_text_from_docx(file_content: bytes) -> str:
@@ -236,14 +255,19 @@ def process_document_inline(
         document.status = DocumentStatus.PROCESSED
         db.commit()
         db.refresh(document)
-
-        # Classify document type and extract structured data
-        classify_and_extract(db, document)
     except Exception as e:
         document.status = DocumentStatus.ERROR
         document.error_message = str(e)
         db.commit()
         db.refresh(document)
+        return document
+
+    # Classify document type — separate try/catch so extraction failures
+    # don't prevent the document from being marked as processed
+    try:
+        classify_and_extract(db, document)
+    except Exception:
+        pass  # Classification is optional, don't fail the whole upload
 
     return document
 
