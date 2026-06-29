@@ -1,4 +1,6 @@
 import json
+import re
+import uuid
 
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse, Response
@@ -6,12 +8,13 @@ from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import get_db
 from app.dependencies import get_current_user, get_active_consultation
 from app.modules.users.models import User
 from app.modules.payments.models import Consultation, ConsultationStatus
 from app.modules.payments.services import increment_question_count
-from app.modules.chat.models import Message, MessageRole
+from app.modules.chat.models import Message, MessageRole, Strategy
 from app.modules.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -23,8 +26,11 @@ from app.modules.chat.schemas import (
     PlannerResponse,
     NewsResponse,
     NewsArticle,
+    StrategyResponse,
+    StrategyListResponse,
 )
 from app.modules.chat import services
+from app.modules.documents.services import upload_to_s3, get_s3_client
 from app.modules.notifications.email_service import send_consultation_summary
 
 limiter = Limiter(key_func=get_remote_address)
@@ -388,7 +394,7 @@ def finish_consultation(
     return {"message": "Consultation finished. Summary sent to your email."}
 
 
-@router.post("/report")
+@router.post("/report", response_model=StrategyResponse)
 def generate_report(
     data: StrategyReportRequest,
     current_user: User = Depends(get_current_user),
@@ -403,8 +409,126 @@ def generate_report(
         )
 
     pdf_bytes = services.generate_strategy_report_pdf(db, consultation.id, data.title)
+
+    # Upload to S3
+    file_id = uuid.uuid4().hex
+    s3_key = f"{settings.AWS_S3_PREFIX}/strategies/{current_user.id}/{consultation.id}/{file_id}.pdf"
+    upload_to_s3(pdf_bytes, s3_key, "application/pdf")
+
+    # Generate a short AI summary for the strategy record
+    summary = _generate_strategy_summary(db, consultation.id)
+
+    # Save strategy record
+    strategy = Strategy(
+        consultation_id=consultation.id,
+        user_id=current_user.id,
+        title=data.title,
+        s3_key=s3_key,
+        file_size=len(pdf_bytes),
+        summary=summary,
+    )
+    db.add(strategy)
+    db.commit()
+    db.refresh(strategy)
+
+    return strategy
+
+
+def _generate_strategy_summary(db: Session, consultation_id: int) -> str | None:
+    """Generate a short AI summary of the consultation for the strategy record."""
+    try:
+        messages = (
+            db.query(Message)
+            .filter(
+                Message.consultation_id == consultation_id,
+                Message.role == MessageRole.ASSISTANT,
+            )
+            .order_by(Message.created_at.asc())
+            .limit(5)
+            .all()
+        )
+        if not messages:
+            return None
+
+        all_advice = "\n".join(m.content[:1500] for m in messages)
+        client = services.get_openai_client()
+        response = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[
+                {
+                    "role": "system",
+                    "content": (
+                        "Write a 2-3 sentence summary of these tax consultation findings. "
+                        "Include key recommendations and any specific amounts. "
+                        "Write in plain text, no markdown."
+                    ),
+                },
+                {
+                    "role": "user",
+                    "content": f"Summarise:\n\n{all_advice}",
+                },
+            ],
+            max_tokens=200,
+            temperature=0.3,
+        )
+        raw = response.choices[0].message.content.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+        return raw
+    except Exception:
+        return None
+
+
+@router.get("/strategies", response_model=StrategyListResponse)
+def list_strategies(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Return all saved strategies for the active consultation."""
+    query = db.query(Strategy).filter(
+        Strategy.consultation_id == consultation.id,
+        Strategy.user_id == current_user.id,
+    )
+    total = query.count()
+    strategies = query.order_by(Strategy.created_at.desc()).all()
+    return StrategyListResponse(strategies=strategies, total=total)
+
+
+@router.get("/strategies/{strategy_id}/download")
+def download_strategy(
+    strategy_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Download a previously generated strategy PDF from S3."""
+    strategy = (
+        db.query(Strategy)
+        .filter(Strategy.id == strategy_id, Strategy.user_id == current_user.id)
+        .first()
+    )
+    if not strategy:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Strategy not found.",
+        )
+
+    try:
+        s3 = get_s3_client()
+        s3_response = s3.get_object(Bucket=settings.AWS_S3_BUCKET, Key=strategy.s3_key)
+        pdf_bytes = s3_response["Body"].read()
+    except Exception:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to retrieve the strategy PDF from storage.",
+        )
+
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={"Content-Disposition": 'attachment; filename="strategy_report.pdf"'},
+        headers={
+            "Content-Disposition": f'attachment; filename="strategy_report_{strategy.id}.pdf"'
+        },
     )

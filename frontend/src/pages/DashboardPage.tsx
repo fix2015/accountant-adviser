@@ -24,6 +24,7 @@ import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
 import { Spinner } from "@/components/ui/Spinner";
 import { getActiveConsultation, verifyPayment } from "@/api/payments";
+import { getStrategies } from "@/api/chat";
 import type { KnowledgeNode, ConsultationInfo } from "@/types";
 
 export function DashboardPage() {
@@ -34,6 +35,7 @@ export function DashboardPage() {
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
   const [consultationLoading, setConsultationLoading] = useState(true);
   const [paymentVerified, setPaymentVerified] = useState(false);
+  const [strategyCount, setStrategyCount] = useState(0);
 
   useEffect(() => {
     const sessionId = searchParams.get("session_id");
@@ -55,6 +57,12 @@ export function DashboardPage() {
         setConsultation(c);
       } catch {
         setConsultation(null);
+      }
+      try {
+        const s = await getStrategies();
+        setStrategyCount(s.total);
+      } catch {
+        setStrategyCount(0);
       }
       setConsultationLoading(false);
     };
@@ -300,7 +308,7 @@ export function DashboardPage() {
               </div>
               <span className="text-sm text-ds-text-secondary">Strategies</span>
             </div>
-            <p className="text-3xl font-bold text-ds-text-primary">--</p>
+            <p className="text-3xl font-bold text-ds-text-primary">{strategyCount}</p>
           </Card>
         </motion.div>
       </div>

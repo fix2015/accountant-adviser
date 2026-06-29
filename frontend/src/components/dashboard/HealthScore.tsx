@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { motion, animate, useMotionValue, useTransform } from "framer-motion";
-import { RefreshCw, TrendingUp, ShieldCheck, Receipt, Lightbulb } from "lucide-react";
+import { RefreshCw, TrendingUp, ShieldCheck, Receipt, Lightbulb, ArrowRight } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
@@ -188,6 +189,7 @@ function HealthScoreSkeleton() {
 }
 
 export function HealthScore() {
+  const navigate = useNavigate();
   const [data, setData] = useState<HealthScoreResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -287,12 +289,14 @@ export function HealthScore() {
                   initial={{ opacity: 0, x: -10 }}
                   animate={{ opacity: 1, x: 0 }}
                   transition={{ delay: 0.8 + i * 0.15 }}
-                  className="flex items-start gap-2.5 text-xs text-ds-text-secondary leading-relaxed"
+                  onClick={() => navigate(`/dashboard/chat?q=${encodeURIComponent(`Give me detailed advice with examples: ${rec}`)}`)}
+                  className="flex items-center gap-2.5 text-xs text-ds-text-secondary leading-relaxed cursor-pointer hover:text-ds-text-primary hover:bg-ds-bg-surface/50 rounded-lg px-2 py-1.5 -mx-2 transition-colors group"
                 >
                   <span className="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full bg-ds-accent-primary/10 text-[10px] font-bold text-ds-text-accent">
                     {i + 1}
                   </span>
-                  {rec}
+                  <span className="flex-1">{rec}</span>
+                  <ArrowRight className="h-3 w-3 text-ds-text-muted opacity-0 group-hover:opacity-100 transition-opacity shrink-0" />
                 </motion.li>
               ))}
             </ul>

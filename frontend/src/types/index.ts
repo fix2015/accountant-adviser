@@ -108,13 +108,13 @@ export interface PaymentIntent {
   payment_intent_id: string;
 }
 
-export interface Strategy {
-  id: string;
-  user_id: string;
+export interface StrategyResponse {
+  id: number;
+  consultation_id: number;
   title: string;
-  summary: string;
+  file_size: number;
+  summary: string | null;
   created_at: string;
-  download_url: string;
 }
 
 export interface AdminStats {

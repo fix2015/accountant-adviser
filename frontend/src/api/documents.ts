@@ -15,6 +15,11 @@ export async function getDocuments(): Promise<Document[]> {
   return response.data.documents;
 }
 
+export async function reprocessDocument(id: number): Promise<Document> {
+  const response = await client.post<Document>(`/documents/${id}/reprocess`);
+  return response.data;
+}
+
 export async function deleteDocument(id: number): Promise<void> {
   await client.delete(`/documents/${id}`);
 }

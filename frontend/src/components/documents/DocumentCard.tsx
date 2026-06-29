@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { motion } from "framer-motion";
-import { FileText, Trash2, CheckCircle, Loader2, AlertCircle, AlertTriangle } from "lucide-react";
+import { FileText, Trash2, CheckCircle, Loader2, AlertCircle, AlertTriangle, RefreshCw } from "lucide-react";
 import { cn } from "@/utils/cn";
 import { formatFileSize, formatRelative } from "@/utils/format";
 import type { Document } from "@/types";
@@ -8,6 +8,7 @@ import type { Document } from "@/types";
 interface DocumentCardProps {
   document: Document;
   onDelete: (id: number) => void;
+  onRetry?: (id: number) => void;
   isDeleting?: boolean;
 }
 
@@ -49,7 +50,7 @@ interface StructuredData {
   flags?: string[];
 }
 
-export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardProps) {
+export function DocumentCard({ document, onDelete, onRetry, isDeleting }: DocumentCardProps) {
   const ext = document.filename.split(".").pop()?.toLowerCase() || "";
   const status = statusConfig[document.status];
   const StatusIcon = status.icon;
@@ -124,18 +125,29 @@ export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardPro
         )}
       </div>
 
-      <button
-        onClick={() => onDelete(document.id)}
-        disabled={isDeleting}
-        className="opacity-0 group-hover:opacity-100 rounded-lg p-2 text-ds-text-muted hover:text-ds-feedback-error hover:bg-ds-feedback-error/10 transition-all"
-        title="Delete document"
-      >
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-all">
+        {(document.status === "processing" || document.status === "error") && onRetry && (
+          <button
+            onClick={() => onRetry(document.id)}
+            className="rounded-lg p-2 text-ds-text-muted hover:text-ds-text-accent hover:bg-ds-accent-primary/10 transition-all"
+            title="Retry processing"
+          >
+            <RefreshCw className="h-4 w-4" />
+          </button>
+        )}
+        <button
+          onClick={() => onDelete(document.id)}
+          disabled={isDeleting}
+          className="rounded-lg p-2 text-ds-text-muted hover:text-ds-feedback-error hover:bg-ds-feedback-error/10 transition-all"
+          title="Delete document"
+        >
         {isDeleting ? (
           <Loader2 className="h-4 w-4 animate-spin" />
         ) : (
           <Trash2 className="h-4 w-4" />
         )}
       </button>
+      </div>
     </motion.div>
   );
 }

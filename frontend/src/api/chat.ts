@@ -1,5 +1,5 @@
 import client from "./client";
-import type { ChatMessage, ChatSession, HealthScoreResponse, ScenarioRequest, ScenarioResponse, PlannerResponse, NewsResponse } from "@/types";
+import type { ChatMessage, ChatSession, HealthScoreResponse, ScenarioRequest, ScenarioResponse, PlannerResponse, NewsResponse, StrategyResponse } from "@/types";
 
 export async function getChatSession(): Promise<ChatSession> {
   const response = await client.get<ChatSession>("/chat/session");
@@ -43,6 +43,23 @@ export async function getPlanner(): Promise<PlannerResponse> {
 
 export async function getNews(): Promise<NewsResponse> {
   const response = await client.get("/chat/news");
+  return response.data;
+}
+
+export async function getStrategies(): Promise<{ strategies: StrategyResponse[]; total: number }> {
+  const response = await client.get("/chat/strategies");
+  return response.data;
+}
+
+export async function generateStrategy(title: string): Promise<StrategyResponse> {
+  const response = await client.post("/chat/report", { title });
+  return response.data;
+}
+
+export async function downloadStrategy(strategyId: number): Promise<Blob> {
+  const response = await client.get(`/chat/strategies/${strategyId}/download`, {
+    responseType: "blob",
+  });
   return response.data;
 }
 

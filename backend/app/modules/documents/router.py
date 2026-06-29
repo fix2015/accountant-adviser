@@ -308,6 +308,29 @@ def get_document(
     return document
 
 
+@router.post("/{document_id}/reprocess", response_model=DocumentResponse)
+def reprocess_document(
+    document_id: int,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Retry processing a stuck document."""
+    document = services.get_document_by_id(db, document_id, current_user.id)
+    if not document:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Document not found",
+        )
+    document = services.process_document(db, document_id)
+    if document.extracted_text:
+        from app.modules.knowledge.services import build_knowledge_from_document
+
+        build_knowledge_from_document(db, document)
+    if document.extracted_text:
+        services.classify_and_extract(db, document)
+    return document
+
+
 @router.delete("/{document_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_document(
     document_id: int,

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { ChatMessage, StreamingMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
 import { QuestionCounter } from "./QuestionCounter";
@@ -36,6 +36,9 @@ export function ChatWindow() {
       .catch(() => setSuggestions([]));
   };
 
+  const [searchParams, setSearchParams] = useSearchParams();
+  const autoSentRef = useRef(false);
+
   useEffect(() => {
     loadHistory();
     loadSuggestions();
@@ -43,6 +46,16 @@ export function ChatWindow() {
       .then(setConsultation)
       .catch(() => setConsultation(null));
   }, [loadHistory]);
+
+  // Auto-send question from URL query param (e.g., from health score recommendations)
+  useEffect(() => {
+    const q = searchParams.get("q");
+    if (q && !autoSentRef.current && !isStreaming) {
+      autoSentRef.current = true;
+      sendMessage(q, activeAgent);
+      setSearchParams({}, { replace: true });
+    }
+  }, [searchParams, isStreaming, sendMessage, activeAgent, setSearchParams]);
 
   // Refresh question counter + suggestions after streaming completes
   const prevStreamingRef = useRef(false);

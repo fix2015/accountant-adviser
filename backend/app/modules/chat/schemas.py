@@ -90,3 +90,19 @@ class NewsArticle(BaseModel):
 
 class NewsResponse(BaseModel):
     articles: list[NewsArticle]
+
+
+class StrategyResponse(BaseModel):
+    id: int
+    consultation_id: int
+    title: str
+    file_size: int
+    summary: str | None = None
+    created_at: datetime
+
+    model_config = {"from_attributes": True}
+
+
+class StrategyListResponse(BaseModel):
+    strategies: list[StrategyResponse]
+    total: int
