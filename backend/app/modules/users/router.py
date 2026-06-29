@@ -4,7 +4,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.modules.users.models import User
-from app.modules.users.schemas import UserResponse, UserUpdate
+from app.modules.users.schemas import UserResponse, UserUpdate, BusinessInfoUpdate
 from app.modules.users import services
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -31,4 +31,36 @@ def update_me(
     update_data = data.model_dump(exclude_unset=True, exclude={"is_active"})
     if data.email:
         update_data["email"] = data.email.lower().strip()
+    return services.update_user(db, current_user, **update_data)
+
+
+@router.patch("/me/business", response_model=UserResponse)
+def update_business_info(
+    data: BusinessInfoUpdate,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    valid_business_types = {"sole_trader", "limited_company", "partnership", "llp"}
+    valid_revenue_ranges = {
+        "0-25k",
+        "25k-50k",
+        "50k-100k",
+        "100k-250k",
+        "250k-500k",
+        "500k+",
+    }
+
+    if data.business_type and data.business_type not in valid_business_types:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid business_type. Must be one of: {', '.join(valid_business_types)}",
+        )
+    if data.revenue_range and data.revenue_range not in valid_revenue_ranges:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"Invalid revenue_range. Must be one of: {', '.join(valid_revenue_ranges)}",
+        )
+
+    update_data = data.model_dump(exclude_unset=True)
+    update_data["onboarding_completed"] = True
     return services.update_user(db, current_user, **update_data)

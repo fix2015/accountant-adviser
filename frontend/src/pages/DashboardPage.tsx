@@ -15,6 +15,7 @@ import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
 import { KnowledgeGraph } from "@/components/knowledge/KnowledgeGraph";
 import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
+import { ProgressTracker } from "@/components/dashboard/ProgressTracker";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
@@ -238,6 +239,15 @@ export function DashboardPage() {
           </Link>
         </motion.div>
       )}
+
+      {/* Progress Tracker */}
+      <ProgressTracker
+        documentsCount={documents.length}
+        hasProcessedDocument={documents.some((d) => d.status === "processed")}
+        questionsUsed={questionsUsed}
+        questionsLimit={questionsLimit}
+        hasDownloadedReport={localStorage.getItem("report_downloaded") === "true"}
+      />
 
       {/* Welcome header */}
       <div>

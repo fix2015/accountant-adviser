@@ -4,6 +4,7 @@ import { Hero } from "@/components/landing/Hero";
 import { Stats } from "@/components/landing/Stats";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Features } from "@/components/landing/Features";
+import { Calculator } from "@/components/landing/Calculator";
 import { Pricing } from "@/components/landing/Pricing";
 import { Testimonials } from "@/components/landing/Testimonials";
 import { CTA } from "@/components/landing/CTA";
@@ -16,6 +17,7 @@ export function LandingPage() {
       <Stats />
       <HowItWorks />
       <Features />
+      <Calculator />
       <Pricing />
       <Testimonials />
       <CTA />

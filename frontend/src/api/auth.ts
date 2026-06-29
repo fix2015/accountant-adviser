@@ -24,3 +24,14 @@ export async function refreshToken(refresh_token: string): Promise<AuthTokens> {
   const response = await client.post<AuthTokens>("/auth/refresh", { refresh_token });
   return response.data;
 }
+
+export interface BusinessInfoData {
+  business_type?: string;
+  revenue_range?: string;
+  employee_count?: number;
+}
+
+export async function updateBusinessInfo(data: BusinessInfoData): Promise<User> {
+  const response = await client.patch<User>("/users/me/business", data);
+  return response.data;
+}

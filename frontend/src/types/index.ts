@@ -5,6 +5,10 @@ export interface User {
   role: "user" | "admin";
   is_active: boolean;
   created_at: string;
+  business_type: string | null;
+  revenue_range: string | null;
+  employee_count: number | null;
+  onboarding_completed: boolean;
 }
 
 export interface AuthTokens {

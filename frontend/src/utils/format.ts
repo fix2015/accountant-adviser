@@ -19,6 +19,11 @@ export function formatRelative(date: string | Date): string {
   return formatDistanceToNow(new Date(date), { addSuffix: true });
 }
 
+export function formatPounds(amount: number): string {
+  const rounded = Math.round(amount);
+  return `\u00A3${rounded.toLocaleString("en-GB")}`;
+}
+
 export function formatFileSize(bytes: number): string {
   if (bytes === 0) return "0 Bytes";
   const k = 1024;

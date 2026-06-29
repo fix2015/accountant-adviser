@@ -1,6 +1,8 @@
+import { useState } from "react";
 import { NavLink, Outlet, Navigate } from "react-router-dom";
 import { useAuth } from "@/hooks/useAuth";
 import { Spinner } from "@/components/ui/Spinner";
+import { OnboardingWizard } from "@/components/onboarding/OnboardingWizard";
 import { cn } from "@/utils/cn";
 import {
   LayoutDashboard,
@@ -20,6 +22,10 @@ const sidebarLinks = [
 
 export function DashboardLayout() {
   const { user, isLoading, isAuthenticated, logout } = useAuth();
+  const [onboardingDismissed, setOnboardingDismissed] = useState(false);
+
+  const showOnboarding =
+    user && !user.onboarding_completed && !onboardingDismissed;
 
   if (isLoading) {
     return (
@@ -35,6 +41,11 @@ export function DashboardLayout() {
 
   return (
     <div className="flex h-screen bg-ds-bg-primary">
+      {/* Onboarding Wizard */}
+      {showOnboarding && (
+        <OnboardingWizard onComplete={() => setOnboardingDismissed(true)} />
+      )}
+
       {/* Sidebar */}
       <aside className="hidden lg:flex flex-col w-64 border-r border-ds-border-default bg-ds-bg-secondary">
         <div className="flex items-center gap-2.5 px-6 py-5 border-b border-ds-border-default">

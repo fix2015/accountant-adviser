@@ -22,3 +22,13 @@ class User(Base):
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    # Onboarding fields
+    business_type = Column(
+        String(50), nullable=True
+    )  # sole_trader, limited_company, partnership, llp
+    revenue_range = Column(
+        String(50), nullable=True
+    )  # 0-25k, 25k-50k, 50k-100k, 100k-250k, 250k-500k, 500k+
+    employee_count = Column(Integer, nullable=True, default=0)
+    onboarding_completed = Column(Boolean, default=False, nullable=False)
