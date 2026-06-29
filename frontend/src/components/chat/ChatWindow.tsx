@@ -1,4 +1,4 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { ChatMessage, StreamingMessage } from "./ChatMessage";
 import { ChatInput } from "./ChatInput";
@@ -7,18 +7,24 @@ import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
 import { Bot, Sparkles } from "lucide-react";
+import { getActiveConsultation } from "@/api/payments";
+import type { ConsultationInfo } from "@/types";
 
 export function ChatWindow() {
-  const { user, refreshUser } = useAuth();
+  const { refreshUser } = useAuth();
   const { messages, isStreaming, streamingContent, error, sendMessage, stopStreaming, loadHistory } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
 
-  const questionsUsed = user ? 50 - (user.questions_remaining || 0) : 0;
-  const questionsTotal = 50;
-  const isOutOfQuestions = (user?.questions_remaining || 0) <= 0;
+  const questionsUsed = consultation?.questions_used ?? 0;
+  const questionsTotal = consultation?.questions_limit ?? 0;
+  const isOutOfQuestions = questionsUsed >= questionsTotal;
 
   useEffect(() => {
     loadHistory();
+    getActiveConsultation()
+      .then(setConsultation)
+      .catch(() => setConsultation(null));
   }, [loadHistory]);
 
   useEffect(() => {
@@ -27,9 +33,16 @@ export function ChatWindow() {
     }
   }, [messages, streamingContent]);
 
-  const handleSend = (content: string) => {
+  const handleSend = async (content: string) => {
     sendMessage(content);
     refreshUser();
+    // Refresh consultation data after sending
+    try {
+      const updated = await getActiveConsultation();
+      setConsultation(updated);
+    } catch {
+      // ignore
+    }
   };
 
   return (
@@ -103,11 +116,11 @@ export function ChatWindow() {
       {isOutOfQuestions && (
         <div className="border-t border-ds-border-default bg-ds-bg-tertiary/80 px-6 py-4 text-center">
           <p className="text-sm text-ds-text-secondary mb-3">
-            You have used all your questions. Purchase 50 more to continue.
+            You have used all your questions. Purchase more to continue.
           </p>
           <Link to="/dashboard">
             <Button variant="glow" size="md">
-              Buy 50 More Questions for £50
+              Upgrade Consultation
             </Button>
           </Link>
         </div>

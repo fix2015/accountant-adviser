@@ -68,10 +68,10 @@ export function DashboardLayout() {
         <div className="p-4 border-t border-ds-border-default">
           <div className="flex items-center gap-3 px-3 py-2">
             <div className="flex h-8 w-8 items-center justify-center rounded-full bg-ds-bg-surface text-sm font-medium text-ds-text-accent">
-              {user?.name?.charAt(0).toUpperCase()}
+              {user?.full_name?.charAt(0).toUpperCase()}
             </div>
             <div className="flex-1 min-w-0">
-              <p className="text-sm font-medium text-ds-text-primary truncate">{user?.name}</p>
+              <p className="text-sm font-medium text-ds-text-primary truncate">{user?.full_name}</p>
               <p className="text-xs text-ds-text-muted truncate">{user?.email}</p>
             </div>
             <button

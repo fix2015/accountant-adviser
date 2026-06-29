@@ -29,7 +29,7 @@ export function UsersList() {
         <tbody>
           {users?.map((user) => (
             <tr key={user.id} className="border-b border-ds-border-default/50 hover:bg-ds-bg-surface/30 transition-colors">
-              <td className="px-4 py-3 text-ds-text-primary font-medium">{user.name}</td>
+              <td className="px-4 py-3 text-ds-text-primary font-medium">{user.full_name || "N/A"}</td>
               <td className="px-4 py-3 text-ds-text-secondary">{user.email}</td>
               <td className="px-4 py-3">
                 <Badge variant={user.role === "admin" ? "accent" : "default"}>{user.role}</Badge>

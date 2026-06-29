@@ -24,6 +24,21 @@ async def upload_document(
     consultation: Consultation = Depends(get_active_consultation),
     db: Session = Depends(get_db),
 ):
+    # Check trial document limit (1 document for free trial)
+    if getattr(consultation, "is_trial", False):
+        from app.modules.documents.models import Document as DocumentModel
+
+        doc_count = (
+            db.query(DocumentModel)
+            .filter(DocumentModel.consultation_id == consultation.id)
+            .count()
+        )
+        if doc_count >= 1:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Free trial allows only 1 document upload. Upgrade to full consultation for unlimited uploads.",
+            )
+
     file_content = await file.read()
     file_size = len(file_content)
 

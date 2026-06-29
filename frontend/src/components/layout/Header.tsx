@@ -61,7 +61,7 @@ export function Header() {
                 </Link>
               )}
               <div className="flex items-center gap-3 pl-3 border-l border-ds-border-default">
-                <span className="text-sm text-ds-text-secondary">{user?.name}</span>
+                <span className="text-sm text-ds-text-secondary">{user?.full_name}</span>
                 <button
                   onClick={handleLogout}
                   className="rounded-lg p-2 text-ds-text-muted hover:text-ds-text-primary hover:bg-ds-bg-surface transition-colors"

@@ -12,7 +12,7 @@ export async function register(data: RegisterRequest): Promise<AuthTokens> {
 }
 
 export async function getMe(): Promise<User> {
-  const response = await client.get<User>("/auth/me");
+  const response = await client.get<User>("/users/me");
   return response.data;
 }
 

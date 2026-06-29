@@ -1,7 +1,7 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum
+from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Boolean
 
 from app.database import Base
 
@@ -47,11 +47,12 @@ class Consultation(Base):
     user_id = Column(
         Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
     )
-    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=False)
+    payment_id = Column(Integer, ForeignKey("payments.id"), nullable=True)
     status = Column(
         Enum(ConsultationStatus), default=ConsultationStatus.ACTIVE, nullable=False
     )
     questions_used = Column(Integer, default=0, nullable=False)
     questions_limit = Column(Integer, default=50, nullable=False)
+    is_trial = Column(Boolean, default=False, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)

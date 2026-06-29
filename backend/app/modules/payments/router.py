@@ -10,6 +10,7 @@ from app.modules.payments.models import PaymentType
 from app.modules.payments.schemas import (
     CreateCheckoutRequest,
     CheckoutResponse,
+    ConsultationResponse,
     PaymentListResponse,
     ConsultationListResponse,
 )
@@ -60,6 +61,30 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
         services.handle_payment_failed(db, event["data"]["object"])
 
     return {"status": "ok"}
+
+
+@router.get("/consultation/active", response_model=ConsultationResponse)
+def get_active_consultation(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    from app.modules.payments.models import Consultation, ConsultationStatus
+
+    consultation = (
+        db.query(Consultation)
+        .filter(
+            Consultation.user_id == current_user.id,
+            Consultation.status == ConsultationStatus.ACTIVE,
+        )
+        .order_by(Consultation.created_at.desc())
+        .first()
+    )
+    if not consultation:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="No active consultation found",
+        )
+    return consultation
 
 
 @router.get("/my-payments", response_model=PaymentListResponse)

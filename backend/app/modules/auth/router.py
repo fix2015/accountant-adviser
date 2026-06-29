@@ -10,6 +10,13 @@ from app.modules.auth.schemas import (
 )
 from app.modules.auth import services as auth_services
 from app.modules.users import services as user_services
+from app.modules.payments.models import (
+    Consultation,
+    ConsultationStatus,
+    Payment,
+    PaymentStatus,
+    PaymentType,
+)
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
@@ -32,6 +39,31 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
     user = user_services.create_user(
         db, email=data.email, password=data.password, full_name=data.full_name
     )
+
+    # Create free trial payment (£0)
+    trial_payment = Payment(
+        user_id=user.id,
+        amount=0,
+        currency="gbp",
+        status=PaymentStatus.COMPLETED,
+        payment_type=PaymentType.CONSULTATION,
+        stripe_session_id=f"trial_{user.id}",
+    )
+    db.add(trial_payment)
+    db.flush()
+
+    # Create free trial consultation with 3 questions limit
+    trial_consultation = Consultation(
+        user_id=user.id,
+        payment_id=trial_payment.id,
+        status=ConsultationStatus.ACTIVE,
+        questions_used=0,
+        questions_limit=3,
+        is_trial=True,
+    )
+    db.add(trial_consultation)
+    db.commit()
+
     access_token = auth_services.create_access_token(user)
     refresh_token = auth_services.create_refresh_token(db, user)
     return TokenResponse(access_token=access_token, refresh_token=refresh_token)

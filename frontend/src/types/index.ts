@@ -1,11 +1,10 @@
 export interface User {
-  id: string;
+  id: number;
   email: string;
-  name: string;
+  full_name: string | null;
   role: "user" | "admin";
+  is_active: boolean;
   created_at: string;
-  questions_remaining: number;
-  has_paid: boolean;
 }
 
 export interface AuthTokens {
@@ -22,7 +21,18 @@ export interface LoginRequest {
 export interface RegisterRequest {
   email: string;
   password: string;
-  name: string;
+  full_name: string;
+}
+
+export interface ConsultationInfo {
+  id: number;
+  user_id: number;
+  payment_id: number | null;
+  status: "active" | "completed";
+  questions_used: number;
+  questions_limit: number;
+  is_trial: boolean;
+  created_at: string;
 }
 
 export interface ChatMessage {
@@ -92,11 +102,12 @@ export interface AdminStats {
 }
 
 export interface AdminUser {
-  id: string;
+  id: number;
   email: string;
-  name: string;
+  full_name: string | null;
   role: string;
   created_at: string;
+  is_active: boolean;
   has_paid: boolean;
   questions_remaining: number;
   total_documents: number;

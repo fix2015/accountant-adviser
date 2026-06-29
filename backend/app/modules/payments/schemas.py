@@ -34,10 +34,11 @@ class PaymentResponse(BaseModel):
 class ConsultationResponse(BaseModel):
     id: int
     user_id: int
-    payment_id: int
+    payment_id: Optional[int] = None
     status: ConsultationStatus
     questions_used: int
     questions_limit: int
+    is_trial: bool = False
     created_at: datetime
 
     model_config = {"from_attributes": True}

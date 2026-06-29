@@ -110,6 +110,13 @@ def generate_report(
     consultation: Consultation = Depends(get_active_consultation),
     db: Session = Depends(get_db),
 ):
+    # Disable PDF report for trial users
+    if getattr(consultation, "is_trial", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="PDF strategy reports are not available on the free trial. Upgrade to full consultation for £10.",
+        )
+
     pdf_bytes = services.generate_strategy_report_pdf(db, consultation.id, data.title)
     return Response(
         content=pdf_bytes,

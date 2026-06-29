@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
@@ -9,6 +9,7 @@ import {
   Upload,
   ArrowRight,
   CreditCard,
+  Sparkles,
 } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { useDocuments } from "@/hooks/useDocuments";
@@ -17,17 +18,33 @@ import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
-import type { KnowledgeNode } from "@/types";
+import { Spinner } from "@/components/ui/Spinner";
+import { getActiveConsultation } from "@/api/payments";
+import type { KnowledgeNode, ConsultationInfo } from "@/types";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const { documents } = useDocuments();
   const [selectedNode, setSelectedNode] = useState<KnowledgeNode | null>(null);
+  const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
+  const [consultationLoading, setConsultationLoading] = useState(true);
 
-  const questionsUsed = user ? 50 - (user.questions_remaining || 0) : 0;
-  const hasPaid = user?.has_paid;
+  useEffect(() => {
+    getActiveConsultation()
+      .then(setConsultation)
+      .catch(() => setConsultation(null))
+      .finally(() => setConsultationLoading(false));
+  }, []);
 
-  if (!hasPaid) {
+  if (consultationLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen p-6">
+        <Spinner size="lg" />
+      </div>
+    );
+  }
+
+  if (!consultation) {
     return (
       <div className="flex items-center justify-center min-h-screen p-6">
         <motion.div
@@ -56,12 +73,42 @@ export function DashboardPage() {
     );
   }
 
+  const questionsUsed = consultation.questions_used;
+  const questionsLimit = consultation.questions_limit;
+  const questionsLeft = questionsLimit - questionsUsed;
+
   return (
     <div className="p-6 space-y-6">
+      {/* Trial banner */}
+      {consultation.is_trial && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-ds-accent-secondary/30 bg-ds-accent-secondary/5 p-4 flex items-center justify-between gap-4"
+        >
+          <div className="flex items-center gap-3">
+            <Sparkles className="h-5 w-5 text-ds-accent-secondary shrink-0" />
+            <div>
+              <p className="text-sm font-medium text-ds-text-primary">
+                You're on a free trial ({questionsLimit} questions, 1 document upload)
+              </p>
+              <p className="text-xs text-ds-text-secondary mt-0.5">
+                Upgrade to a full consultation for £10 to unlock 50 questions, unlimited documents, and PDF strategy downloads.
+              </p>
+            </div>
+          </div>
+          <Link to="/dashboard">
+            <Button variant="glow" size="sm">
+              Upgrade for £10
+            </Button>
+          </Link>
+        </motion.div>
+      )}
+
       {/* Welcome header */}
       <div>
         <h1 className="text-2xl font-bold text-ds-text-primary">
-          Welcome back, {user?.name?.split(" ")[0]}
+          Welcome back, {user?.full_name?.split(" ")[0] || "there"}
         </h1>
         <p className="text-sm text-ds-text-secondary mt-1">
           Your AI tax consultation dashboard
@@ -90,8 +137,8 @@ export function DashboardPage() {
               </div>
               <span className="text-sm text-ds-text-secondary">Questions Left</span>
             </div>
-            <p className="text-3xl font-bold text-ds-text-primary">{user?.questions_remaining || 0}</p>
-            <QuestionCounter used={questionsUsed} total={50} className="mt-3" />
+            <p className="text-3xl font-bold text-ds-text-primary">{questionsLeft}</p>
+            <QuestionCounter used={questionsUsed} total={questionsLimit} className="mt-3" />
           </Card>
         </motion.div>
 
