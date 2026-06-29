@@ -7,7 +7,7 @@ import type { Document } from "@/types";
 interface DocumentListProps {
   documents: Document[];
   isLoading: boolean;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
   isDeleting: boolean;
 }
 

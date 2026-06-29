@@ -51,14 +51,17 @@ export interface ChatSession {
 }
 
 export interface Document {
-  id: string;
-  user_id: string;
+  id: number;
+  consultation_id: number;
+  user_id: number;
   filename: string;
+  s3_key: string;
   file_type: string;
   file_size: number;
-  uploaded_at: string;
-  status: "processing" | "processed" | "error";
-  summary?: string;
+  status: "uploaded" | "processing" | "processed" | "error";
+  extracted_text?: string | null;
+  error_message?: string | null;
+  created_at: string;
 }
 
 export interface KnowledgeNode {

@@ -6,11 +6,12 @@ import type { Document } from "@/types";
 
 interface DocumentCardProps {
   document: Document;
-  onDelete: (id: string) => void;
+  onDelete: (id: number) => void;
   isDeleting?: boolean;
 }
 
 const statusConfig: Record<string, { icon: typeof CheckCircle; color: string; label: string; animate?: boolean }> = {
+  uploaded: { icon: CheckCircle, color: "text-ds-text-accent", label: "Uploaded" },
   processed: { icon: CheckCircle, color: "text-ds-feedback-success", label: "Processed" },
   processing: { icon: Loader2, color: "text-ds-feedback-warning", label: "Processing", animate: true },
   error: { icon: AlertCircle, color: "text-ds-feedback-error", label: "Error" },
@@ -46,7 +47,7 @@ export function DocumentCard({ document, onDelete, isDeleting }: DocumentCardPro
         <p className="text-sm font-medium text-ds-text-primary truncate">{document.filename}</p>
         <div className="flex items-center gap-3 mt-1">
           <span className="text-xs text-ds-text-muted">{formatFileSize(document.file_size)}</span>
-          <span className="text-xs text-ds-text-muted">{formatRelative(document.uploaded_at)}</span>
+          <span className="text-xs text-ds-text-muted">{formatRelative(document.created_at)}</span>
           <span className={cn("flex items-center gap-1 text-xs", status.color)}>
             <StatusIcon className={cn("h-3 w-3", status.animate && "animate-spin")} />
             {status.label}

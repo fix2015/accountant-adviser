@@ -1,14 +1,20 @@
 import client from "./client";
-import type { PaymentIntent, ConsultationInfo } from "@/types";
+import type { ConsultationInfo } from "@/types";
 
-export async function createPaymentIntent(type: "consultation" | "extra_questions"): Promise<PaymentIntent> {
-  const response = await client.post<PaymentIntent>("/payments/create-intent", { type });
-  return response.data;
-}
-
-export async function confirmPayment(paymentIntentId: string): Promise<{ success: boolean }> {
-  const response = await client.post("/payments/confirm", { payment_intent_id: paymentIntentId });
-  return response.data;
+export async function createCheckout(
+  paymentType: "consultation" | "extra_questions",
+  consultationId?: number
+): Promise<string> {
+  const response = await client.post<{ checkout_url: string; session_id: string }>(
+    "/payments/checkout",
+    {
+      payment_type: paymentType,
+      consultation_id: consultationId,
+      success_url: `${window.location.origin}/dashboard?payment=success`,
+      cancel_url: `${window.location.origin}/dashboard?payment=cancelled`,
+    }
+  );
+  return response.data.checkout_url;
 }
 
 export async function getActiveConsultation(): Promise<ConsultationInfo> {

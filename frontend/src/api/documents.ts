@@ -15,7 +15,7 @@ export async function getDocuments(): Promise<Document[]> {
   return response.data.documents;
 }
 
-export async function deleteDocument(id: string): Promise<void> {
+export async function deleteDocument(id: number): Promise<void> {
   await client.delete(`/documents/${id}`);
 }
 
