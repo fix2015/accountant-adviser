@@ -1,8 +1,11 @@
 import io
+import json as _json
+import re
 import uuid
 from typing import Optional
 
 import boto3
+from openai import OpenAI
 from PyPDF2 import PdfReader
 from docx import Document as DocxDocument
 from sqlalchemy.orm import Session
@@ -90,6 +93,64 @@ def extract_text(file_content: bytes, file_type: str) -> str:
     return extractor(file_content)
 
 
+def classify_and_extract(db: Session, document: Document) -> Document:
+    """Use OpenAI to classify the document type and extract key structured data."""
+    if not document.extracted_text:
+        return document
+
+    # Truncate text to avoid token limits
+    text_sample = document.extracted_text[:4000]
+
+    prompt = (
+        "Analyze this document and return ONLY valid JSON:\n"
+        '{"document_type": "invoice|bank_statement|tax_return|receipt|contract|payslip|other", '
+        '"key_data": {"total_amount": "£X", "date": "YYYY-MM-DD", "from": "entity", '
+        '"to": "entity", "description": "brief"}, '
+        '"flags": ["any anomalies or notable items"]}\n\n'
+        f"Document text:\n{text_sample}"
+    )
+
+    try:
+        client = OpenAI(api_key=settings.OPENAI_API_KEY)
+        response = client.chat.completions.create(
+            model=settings.OPENAI_MODEL,
+            messages=[{"role": "user", "content": prompt}],
+            max_tokens=500,
+            temperature=0.2,
+        )
+
+        raw = response.choices[0].message.content.strip()
+        # Strip markdown code fences if present
+        if raw.startswith("```"):
+            raw = re.sub(r"^```(?:json)?\s*", "", raw)
+            raw = re.sub(r"\s*```$", "", raw)
+
+        data = _json.loads(raw)
+
+        # Save classification
+        doc_type = data.get("document_type", "other")
+        valid_types = {
+            "invoice",
+            "bank_statement",
+            "tax_return",
+            "receipt",
+            "contract",
+            "payslip",
+            "other",
+        }
+        document.document_type = doc_type if doc_type in valid_types else "other"
+        document.structured_data = _json.dumps(data)
+
+    except Exception:
+        # If classification fails, set defaults — don't break the upload flow
+        document.document_type = "other"
+        document.structured_data = None
+
+    db.commit()
+    db.refresh(document)
+    return document
+
+
 def create_document(
     db: Session,
     consultation_id: int,
@@ -160,12 +221,17 @@ def process_document_inline(
         extracted_text = extract_text(file_content, document.file_type)
         document.extracted_text = extracted_text
         document.status = DocumentStatus.PROCESSED
+        db.commit()
+        db.refresh(document)
+
+        # Classify document type and extract structured data
+        classify_and_extract(db, document)
     except Exception as e:
         document.status = DocumentStatus.ERROR
         document.error_message = str(e)
+        db.commit()
+        db.refresh(document)
 
-    db.commit()
-    db.refresh(document)
     return document
 
 

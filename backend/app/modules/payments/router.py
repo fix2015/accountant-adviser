@@ -57,6 +57,26 @@ def create_subscription(
     return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
 
 
+@router.post("/checkout-review", response_model=CheckoutResponse)
+def create_review_checkout(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Create a Stripe checkout for a Professional Accountant Review (£50)."""
+    success_url = data.get(
+        "success_url", "http://localhost:5173/dashboard/strategy?review=booked"
+    )
+    cancel_url = data.get("cancel_url", "http://localhost:5173/dashboard/strategy")
+    checkout_url, session_id = services.create_review_checkout(
+        db=db,
+        user_id=current_user.id,
+        success_url=success_url,
+        cancel_url=cancel_url,
+    )
+    return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
+
+
 @router.post("/webhook", include_in_schema=False)
 async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     payload = await request.body()

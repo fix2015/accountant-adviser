@@ -5,7 +5,7 @@ import { ChatInput } from "./ChatInput";
 import { QuestionCounter } from "./QuestionCounter";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/Button";
-import { Bot, Sparkles, Zap, CheckCircle } from "lucide-react";
+import { Bot, Sparkles, Zap, CheckCircle, Calculator, Shield, TrendingUp } from "lucide-react";
 import { getActiveConsultation } from "@/api/payments";
 import { getChatSuggestions, finishConsultation } from "@/api/chat";
 import { useToast } from "@/components/ui/Toast";
@@ -17,7 +17,14 @@ export function ChatWindow() {
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isFinishing, setIsFinishing] = useState(false);
+  const [activeAgent, setActiveAgent] = useState<"tax" | "compliance" | "growth">("tax");
   const { toast } = useToast();
+
+  const agentTabs = [
+    { id: "tax" as const, label: "Tax Adviser", icon: Calculator, color: "text-blue-400", bg: "bg-blue-500/15", border: "border-blue-500/30", activeBg: "bg-blue-500/20" },
+    { id: "compliance" as const, label: "Compliance", icon: Shield, color: "text-amber-400", bg: "bg-amber-500/15", border: "border-amber-500/30", activeBg: "bg-amber-500/20" },
+    { id: "growth" as const, label: "Growth", icon: TrendingUp, color: "text-green-400", bg: "bg-green-500/15", border: "border-green-500/30", activeBg: "bg-green-500/20" },
+  ];
 
   const questionsUsed = consultation?.questions_used ?? 0;
   const questionsTotal = consultation?.questions_limit ?? 0;
@@ -57,7 +64,7 @@ export function ChatWindow() {
   }, [messages, streamingContent]);
 
   const handleSend = (content: string) => {
-    sendMessage(content);
+    sendMessage(content, activeAgent);
   };
 
   const handleFinish = async () => {
@@ -108,6 +115,28 @@ export function ChatWindow() {
             </Button>
           )}
         </div>
+      </div>
+
+      {/* Agent Selector */}
+      <div className="flex items-center gap-2 border-b border-ds-border-default px-6 py-2 bg-ds-bg-secondary/30">
+        {agentTabs.map((tab) => {
+          const Icon = tab.icon;
+          const isActive = activeAgent === tab.id;
+          return (
+            <button
+              key={tab.id}
+              onClick={() => setActiveAgent(tab.id)}
+              className={`flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-medium transition-all duration-200 border ${
+                isActive
+                  ? `${tab.activeBg} ${tab.color} ${tab.border}`
+                  : "border-transparent text-ds-text-muted hover:text-ds-text-secondary hover:bg-ds-bg-surface/50"
+              }`}
+            >
+              <Icon className="h-3.5 w-3.5" />
+              {tab.label}
+            </button>
+          );
+        })}
       </div>
 
       {/* Messages */}

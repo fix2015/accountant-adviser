@@ -18,7 +18,7 @@ export function useChat() {
     }
   }, []);
 
-  const sendMessage = useCallback((content: string) => {
+  const sendMessage = useCallback((content: string, agent?: string) => {
     setError(null);
 
     const userMessage: ChatMessage = {
@@ -57,7 +57,8 @@ export function useChat() {
         setError(err);
         setIsStreaming(false);
         setStreamingContent("");
-      }
+      },
+      agent
     );
 
     abortRef.current = abort;

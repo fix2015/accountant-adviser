@@ -16,6 +16,8 @@ class DocumentResponse(BaseModel):
     file_size: int
     status: DocumentStatus
     extracted_text: Optional[str] = None
+    document_type: Optional[str] = None
+    structured_data: Optional[str] = None
     error_message: Optional[str] = None
     created_at: datetime
 

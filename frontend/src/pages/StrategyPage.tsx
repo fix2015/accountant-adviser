@@ -1,4 +1,5 @@
 import { StrategyDownload } from "@/components/strategy/StrategyDownload";
+import { AccountantReview } from "@/components/strategy/AccountantReview";
 
 export function StrategyPage() {
   return (
@@ -11,6 +12,8 @@ export function StrategyPage() {
       </div>
 
       <StrategyDownload />
+
+      <AccountantReview />
     </div>
   );
 }

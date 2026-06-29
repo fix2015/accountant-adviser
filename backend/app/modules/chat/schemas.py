@@ -7,6 +7,7 @@ from app.modules.chat.models import MessageRole
 
 class ChatRequest(BaseModel):
     message: str
+    agent: str = "tax"  # "tax", "compliance", "growth"
 
 
 class MessageResponse(BaseModel):

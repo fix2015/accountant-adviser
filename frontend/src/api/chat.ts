@@ -16,8 +16,8 @@ export async function getChatHistory(): Promise<ChatMessage[]> {
   return response.data.messages;
 }
 
-export async function sendMessage(content: string): Promise<ChatMessage> {
-  const response = await client.post<ChatMessage>("/chat/send", { message: content });
+export async function sendMessage(content: string, agent?: string): Promise<ChatMessage> {
+  const response = await client.post<ChatMessage>("/chat/send", { message: content, agent: agent || "tax" });
   return response.data;
 }
 
@@ -40,7 +40,8 @@ export function streamMessage(
   content: string,
   onChunk: (text: string) => void,
   onDone: () => void,
-  onError: (error: string) => void
+  onError: (error: string) => void,
+  agent?: string
 ): () => void {
   const token = localStorage.getItem("access_token");
   const controller = new AbortController();
@@ -51,7 +52,7 @@ export function streamMessage(
       "Content-Type": "application/json",
       Authorization: `Bearer ${token}`,
     },
-    body: JSON.stringify({ message: content }),
+    body: JSON.stringify({ message: content, agent: agent || "tax" }),
     signal: controller.signal,
   })
     .then(async (response) => {

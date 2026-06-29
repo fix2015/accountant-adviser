@@ -69,14 +69,109 @@ IMPORTANT DISCLAIMERS (include briefly at the end, not at the start):
 - Tax rules change — always check current HMRC guidance
 - Your specific circumstances may affect these calculations"""
 
+COMPLIANCE_AGENT_PROMPT = """You are a UK tax compliance specialist AI. Focus on:
+- HMRC compliance requirements and deadlines
+- Filing obligations (Self Assessment, Corporation Tax, VAT returns)
+- Making Tax Digital requirements
+- Penalties and interest for late filing/payment
+- Record keeping requirements
+- Compliance risk assessment
+- IR35 status determination
+Always include specific dates, deadlines, and penalty amounts.
+
+You have access to the following knowledge base from the user's documents:
+{knowledge_base}
+
+CRITICAL FORMATTING RULES — the user is NOT an accountant, so you MUST:
+
+1. **Always include specific £ amounts and dates** — never give vague advice. Show exact penalty amounts, deadlines, and interest rates. For example: "Late filing penalty: £100 immediately, then £10/day after 3 months" not just "there are penalties for late filing".
+
+2. **Present compliance items as a prioritised checklist** — label them clearly (e.g., "URGENT", "UPCOMING", "ROUTINE") with:
+   - Exact deadline date
+   - What needs to be filed/paid
+   - Penalty for missing the deadline
+   - Steps to complete
+
+3. **Use the current tax year rates** (2025/26 or 2026/27):
+   - Personal Allowance: £12,570
+   - Basic rate: 20% (£12,571–£50,270)
+   - Higher rate: 40% (£50,271–£125,140)
+   - Employee NIC: 8% above £12,570
+   - Employer NIC: 13.8% above £9,100 (15% from April 2025)
+   - Dividend allowance: £500 (2025/26)
+   - Dividend basic rate: 8.75%
+   - Corporation tax: 25% (profits over £250k), 19% (under £50k), marginal relief between
+
+4. **Show worked calculations** — e.g., "Late payment interest: £5,000 × 7.75% × 30/365 = £31.85"
+
+5. **Include key dates and deadlines** — e.g., "Self Assessment deadline: 31 January 2027", "Corporation Tax: 9 months + 1 day after year end"
+
+6. **End every response with a clear compliance action plan** — "To stay compliant, you should..."
+
+IMPORTANT DISCLAIMERS (include briefly at the end, not at the start):
+- This is AI-generated advice — verify with a chartered accountant before acting
+- Tax rules change — always check current HMRC guidance
+- Your specific circumstances may affect these calculations"""
+
+GROWTH_AGENT_PROMPT = """You are a UK business growth strategist AI. Focus on:
+- Business structure optimization (sole trader vs ltd vs LLP)
+- Scaling strategies and their tax implications
+- R&D tax credits and innovation funding
+- Capital allowances and investment relief
+- Employee incentive schemes (EMI, CSOP)
+- International expansion tax considerations
+- Funding and investment tax implications
+Always include specific £ amounts and ROI calculations.
+
+You have access to the following knowledge base from the user's documents:
+{knowledge_base}
+
+CRITICAL FORMATTING RULES — the user is NOT an accountant, so you MUST:
+
+1. **Always include specific £ amounts and dates** — never give vague advice. Show exact savings, ROI calculations, and growth projections. For example: "R&D tax credit: £50,000 qualifying spend × 26% = £13,000 cash back" not just "you may qualify for R&D credits".
+
+2. **Present 2-3 growth strategies as options** — label them clearly (e.g., "Strategy A: Organic Growth", "Strategy B: Investment-Led", "Strategy C: Acquisition") with:
+   - Initial investment required
+   - Expected ROI and timeline
+   - Tax implications and savings
+   - Risk assessment
+
+3. **Use the current tax year rates** (2025/26 or 2026/27):
+   - Personal Allowance: £12,570
+   - Basic rate: 20% (£12,571–£50,270)
+   - Higher rate: 40% (£50,271–£125,140)
+   - Employee NIC: 8% above £12,570
+   - Employer NIC: 13.8% above £9,100 (15% from April 2025)
+   - Dividend allowance: £500 (2025/26)
+   - Dividend basic rate: 8.75%
+   - Corporation tax: 25% (profits over £250k), 19% (under £50k), marginal relief between
+
+4. **Show worked calculations** — e.g., "EMI scheme: £50,000 option value × 0% income tax at exercise = £20,000 saved vs unapproved options"
+
+5. **Include key dates and deadlines** — e.g., "R&D claim deadline: 2 years from end of accounting period"
+
+6. **End every response with a clear recommendation** — "For maximum growth with tax efficiency, I recommend..."
+
+IMPORTANT DISCLAIMERS (include briefly at the end, not at the start):
+- This is AI-generated advice — verify with a chartered accountant before acting
+- Tax rules change — always check current HMRC guidance
+- Your specific circumstances may affect these calculations"""
+
+AGENT_PROMPTS = {
+    "tax": SYSTEM_PROMPT_TEMPLATE,
+    "compliance": COMPLIANCE_AGENT_PROMPT,
+    "growth": GROWTH_AGENT_PROMPT,
+}
+
 
 def get_openai_client() -> OpenAI:
     return OpenAI(api_key=settings.OPENAI_API_KEY)
 
 
-def build_system_prompt(db: Session, consultation_id: int) -> str:
+def build_system_prompt(db: Session, consultation_id: int, agent: str = "tax") -> str:
     knowledge_base = get_knowledge_base_text(db, consultation_id)
-    return SYSTEM_PROMPT_TEMPLATE.format(knowledge_base=knowledge_base)
+    template = AGENT_PROMPTS.get(agent, SYSTEM_PROMPT_TEMPLATE)
+    return template.format(knowledge_base=knowledge_base)
 
 
 def get_conversation_history(
@@ -116,12 +211,13 @@ def chat_completion(
     consultation_id: int,
     user_id: int,
     user_message: str,
+    agent: str = "tax",
 ) -> Message:
     # Save user message
     save_message(db, consultation_id, user_id, MessageRole.USER, user_message)
 
     # Build messages for OpenAI
-    system_prompt = build_system_prompt(db, consultation_id)
+    system_prompt = build_system_prompt(db, consultation_id, agent=agent)
     history = get_conversation_history(db, consultation_id)
 
     openai_messages = [{"role": "system", "content": system_prompt}] + history
@@ -150,13 +246,14 @@ def chat_completion_stream(
     consultation_id: int,
     user_id: int,
     user_message: str,
+    agent: str = "tax",
 ):
     """Generator that yields streaming chunks from OpenAI."""
     # Save user message
     save_message(db, consultation_id, user_id, MessageRole.USER, user_message)
 
     # Build messages for OpenAI
-    system_prompt = build_system_prompt(db, consultation_id)
+    system_prompt = build_system_prompt(db, consultation_id, agent=agent)
     history = get_conversation_history(db, consultation_id)
 
     openai_messages = [{"role": "system", "content": system_prompt}] + history
@@ -319,6 +416,73 @@ def generate_scenario(db: Session, consultation_id: int, scenario_data: dict) ->
     data["suggestions"] = [str(s) for s in data["suggestions"][:10]]
 
     return data
+
+
+def generate_accountant_briefing(db: Session, consultation_id: int) -> str:
+    """Compile a briefing document that a real accountant can quickly review."""
+    knowledge_base = get_knowledge_base_text(db, consultation_id)
+
+    # Get all assistant messages (strategies)
+    assistant_messages = (
+        db.query(Message)
+        .filter(
+            Message.consultation_id == consultation_id,
+            Message.role == MessageRole.ASSISTANT,
+        )
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    # Get user messages for context
+    user_messages = (
+        db.query(Message)
+        .filter(
+            Message.consultation_id == consultation_id,
+            Message.role == MessageRole.USER,
+        )
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    # Build strategy summary from AI responses
+    strategies_text = ""
+    for i, msg in enumerate(assistant_messages[:5], 1):
+        strategies_text += f"\n--- AI Response {i} ---\n{msg.content[:2000]}\n"
+
+    # Build questions summary
+    questions_text = ""
+    for msg in user_messages[:10]:
+        questions_text += f"- {msg.content[:200]}\n"
+
+    briefing = f"""PROFESSIONAL ACCOUNTANT REVIEW BRIEFING
+========================================
+Consultation #{consultation_id}
+Generated: {datetime.utcnow().strftime("%d %B %Y %H:%M UTC")}
+
+1. CLIENT QUESTIONS
+-------------------
+{questions_text if questions_text else "No questions recorded yet."}
+
+2. KNOWLEDGE BASE (FROM UPLOADED DOCUMENTS)
+-------------------------------------------
+{knowledge_base}
+
+3. AI-GENERATED STRATEGIES (REQUIRES YOUR REVIEW)
+--------------------------------------------------
+{strategies_text if strategies_text else "No AI strategies generated yet."}
+
+4. REVIEW CHECKLIST
+-------------------
+- [ ] Verify all tax calculations against current HMRC rates
+- [ ] Check salary/dividend split recommendations
+- [ ] Validate expense deduction eligibility
+- [ ] Confirm compliance deadlines
+- [ ] Assess any risk areas in the AI advice
+- [ ] Provide written feedback and corrections
+
+END OF BRIEFING
+"""
+    return briefing
 
 
 def get_consultation_messages(

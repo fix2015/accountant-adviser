@@ -44,6 +44,7 @@ def send_message(
         consultation_id=consultation.id,
         user_id=current_user.id,
         user_message=data.message,
+        agent=data.agent,
     )
 
     # Increment question count
@@ -76,6 +77,7 @@ def send_message_stream(
             consultation_id=consultation.id,
             user_id=current_user.id,
             user_message=data.message,
+            agent=data.agent,
         ):
             yield f"data: {json.dumps({'content': chunk})}\n\n"
 
@@ -186,6 +188,17 @@ def get_suggestions(
             seen.add(s)
             unique.append(s)
     return {"suggestions": unique[:6]}
+
+
+@router.get("/briefing")
+def get_accountant_briefing(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Generate a briefing document for a real accountant to review."""
+    briefing = services.generate_accountant_briefing(db, consultation.id)
+    return {"briefing": briefing}
 
 
 @router.post("/scenario", response_model=ScenarioResponse)

@@ -36,3 +36,11 @@ export async function getActiveConsultation(): Promise<ConsultationInfo> {
   const response = await client.get<ConsultationInfo>("/payments/consultation/active");
   return response.data;
 }
+
+export async function createReviewCheckout(): Promise<string> {
+  const response = await client.post("/payments/checkout-review", {
+    success_url: `${window.location.origin}/dashboard/strategy?review=booked`,
+    cancel_url: `${window.location.origin}/dashboard/strategy`,
+  });
+  return response.data.checkout_url;
+}

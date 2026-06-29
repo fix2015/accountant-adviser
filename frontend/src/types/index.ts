@@ -64,6 +64,8 @@ export interface Document {
   file_size: number;
   status: "uploaded" | "processing" | "processed" | "error";
   extracted_text?: string | null;
+  document_type?: string | null;
+  structured_data?: string | null;
   error_message?: string | null;
   created_at: string;
 }

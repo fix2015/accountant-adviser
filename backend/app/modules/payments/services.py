@@ -66,6 +66,52 @@ def create_checkout_session(
     return session.url, session.id
 
 
+def create_review_checkout(
+    db: Session,
+    user_id: int,
+    success_url: str,
+    cancel_url: str,
+) -> tuple[str, str]:
+    """Create a Stripe checkout for Professional Accountant Review (£50)."""
+    amount = 5000  # £50 in pence
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "gbp",
+                    "product_data": {"name": "Professional Accountant Review"},
+                    "unit_amount": amount,
+                },
+                "quantity": 1,
+            }
+        ],
+        mode="payment",
+        success_url=success_url
+        + ("&" if "?" in success_url else "?")
+        + "session_id={CHECKOUT_SESSION_ID}",
+        cancel_url=cancel_url,
+        metadata={
+            "user_id": str(user_id),
+            "payment_type": PaymentType.ACCOUNTANT_REVIEW.value,
+        },
+    )
+
+    payment = Payment(
+        user_id=user_id,
+        stripe_session_id=session.id,
+        amount=amount,
+        currency="gbp",
+        status=PaymentStatus.PENDING,
+        payment_type=PaymentType.ACCOUNTANT_REVIEW,
+    )
+    db.add(payment)
+    db.commit()
+
+    return session.url, session.id
+
+
 def create_subscription_checkout(
     db: Session,
     user_id: int,
