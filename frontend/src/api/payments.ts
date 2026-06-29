@@ -17,6 +17,13 @@ export async function createCheckout(
   return response.data.checkout_url;
 }
 
+export async function verifyPayment(sessionId: string): Promise<{ status: string }> {
+  const response = await client.post<{ status: string }>("/payments/verify", {
+    session_id: sessionId,
+  });
+  return response.data;
+}
+
 export async function getActiveConsultation(): Promise<ConsultationInfo> {
   const response = await client.get<ConsultationInfo>("/payments/consultation/active");
   return response.data;

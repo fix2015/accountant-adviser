@@ -63,6 +63,41 @@ async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
     return {"status": "ok"}
 
 
+@router.post("/verify")
+def verify_payment(
+    data: dict,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Verify a Stripe checkout session after redirect. Activates the consultation."""
+    session_id = data.get("session_id", "")
+    if not session_id:
+        raise HTTPException(status_code=400, detail="session_id is required")
+
+    from app.modules.payments.models import Payment, PaymentStatus
+
+    payment = db.query(Payment).filter(Payment.stripe_session_id == session_id).first()
+    if not payment:
+        raise HTTPException(status_code=404, detail="Payment not found")
+
+    if payment.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not your payment")
+
+    if payment.status == PaymentStatus.COMPLETED:
+        return {"status": "already_verified"}
+
+    try:
+        session = stripe.checkout.Session.retrieve(session_id)
+    except Exception:
+        raise HTTPException(status_code=400, detail="Invalid session")
+
+    if session.payment_status == "paid":
+        services.handle_checkout_completed(db, dict(session))
+        return {"status": "verified"}
+
+    return {"status": "pending", "payment_status": session.payment_status}
+
+
 @router.get("/consultation/active", response_model=ConsultationResponse)
 def get_active_consultation(
     current_user: User = Depends(get_current_user),

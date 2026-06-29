@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { motion } from "framer-motion";
 import {
   MessageSquare,
@@ -19,22 +19,44 @@ import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
 import { Spinner } from "@/components/ui/Spinner";
-import { getActiveConsultation } from "@/api/payments";
+import { getActiveConsultation, verifyPayment } from "@/api/payments";
 import type { KnowledgeNode, ConsultationInfo } from "@/types";
 
 export function DashboardPage() {
   const { user } = useAuth();
   const { documents } = useDocuments();
+  const [searchParams] = useSearchParams();
   const [selectedNode, setSelectedNode] = useState<KnowledgeNode | null>(null);
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
   const [consultationLoading, setConsultationLoading] = useState(true);
+  const [paymentVerified, setPaymentVerified] = useState(false);
 
   useEffect(() => {
-    getActiveConsultation()
-      .then(setConsultation)
-      .catch(() => setConsultation(null))
-      .finally(() => setConsultationLoading(false));
-  }, []);
+    const sessionId = searchParams.get("session_id");
+    const payment = searchParams.get("payment");
+
+    const load = async () => {
+      // If redirected from Stripe, verify the payment first
+      if (payment === "success" && sessionId) {
+        try {
+          await verifyPayment(sessionId);
+          setPaymentVerified(true);
+        } catch {
+          // Payment may already be verified
+        }
+      }
+
+      try {
+        const c = await getActiveConsultation();
+        setConsultation(c);
+      } catch {
+        setConsultation(null);
+      }
+      setConsultationLoading(false);
+    };
+
+    load();
+  }, [searchParams]);
 
   if (consultationLoading) {
     return (
@@ -177,8 +199,22 @@ export function DashboardPage() {
 
   return (
     <div className="p-6 space-y-6 h-full overflow-auto">
+      {/* Payment success banner */}
+      {paymentVerified && (
+        <motion.div
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="rounded-xl border border-ds-feedback-success/30 bg-ds-feedback-success/10 p-4 flex items-center gap-3"
+        >
+          <Sparkles className="h-5 w-5 text-ds-feedback-success shrink-0" />
+          <p className="text-sm font-medium text-ds-text-primary">
+            Payment successful! Your full consultation is now active — 50 questions, unlimited documents, and PDF strategy downloads.
+          </p>
+        </motion.div>
+      )}
+
       {/* Trial banner */}
-      {consultation.is_trial && (
+      {consultation.is_trial && !paymentVerified && (
         <motion.div
           initial={{ opacity: 0, y: -10 }}
           animate={{ opacity: 1, y: 0 }}

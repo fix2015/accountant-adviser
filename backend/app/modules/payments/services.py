@@ -41,7 +41,9 @@ def create_checkout_session(
             }
         ],
         mode="payment",
-        success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
+        success_url=success_url
+        + ("&" if "?" in success_url else "?")
+        + "session_id={CHECKOUT_SESSION_ID}",
         cancel_url=cancel_url,
         metadata={
             "user_id": str(user_id),
