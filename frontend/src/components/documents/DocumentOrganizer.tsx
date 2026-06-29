@@ -15,7 +15,6 @@ import { cn } from "@/utils/cn";
 import { getOrganizedDocuments } from "@/api/documents";
 import { DocumentCard } from "./DocumentCard";
 import { Spinner } from "@/components/ui/Spinner";
-import type { DocumentFolder } from "@/types";
 
 const iconMap: Record<string, typeof FileText> = {
   receipt: Receipt,
