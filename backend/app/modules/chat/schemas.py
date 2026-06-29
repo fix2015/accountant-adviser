@@ -62,3 +62,31 @@ class ScenarioResponse(BaseModel):
     take_home: int
     effective_rate: float
     suggestions: list[str]
+
+
+class PlannerAction(BaseModel):
+    title: str
+    description: str
+    deadline: str
+    priority: str = "medium"
+
+
+class PlannerMonth(BaseModel):
+    month: str
+    actions: list[PlannerAction]
+
+
+class PlannerResponse(BaseModel):
+    months: list[PlannerMonth]
+
+
+class NewsArticle(BaseModel):
+    title: str
+    date: str
+    summary: str
+    impact: str = "medium"
+    category: str = "general"
+
+
+class NewsResponse(BaseModel):
+    articles: list[NewsArticle]

@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -20,13 +22,15 @@ from app.modules.payments.models import (
     PaymentType,
 )
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post(
     "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
 )
-def register(data: RegisterRequest, db: Session = Depends(get_db)):
+@limiter.limit("5/minute")
+def register(request: Request, data: RegisterRequest, db: Session = Depends(get_db)):
     existing = user_services.get_user_by_email(db, data.email)
     if existing:
         raise HTTPException(
@@ -72,7 +76,8 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/login", response_model=TokenResponse)
-def login(data: LoginRequest, db: Session = Depends(get_db)):
+@limiter.limit("10/minute")
+def login(request: Request, data: LoginRequest, db: Session = Depends(get_db)):
     user = user_services.get_user_by_email(db, data.email)
     if not user or not user_services.verify_password(
         data.password, user.hashed_password
@@ -119,7 +124,10 @@ def logout(data: RefreshRequest, db: Session = Depends(get_db)):
 
 
 @router.post("/forgot-password")
-def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+@limiter.limit("3/minute")
+def forgot_password(
+    request: Request, data: ForgotPasswordRequest, db: Session = Depends(get_db)
+):
     token = auth_services.create_password_reset_token(db, data.email)
     response = {
         "message": "If an account with that email exists, a reset link has been sent."

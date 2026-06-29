@@ -12,6 +12,8 @@ import {
   Brain,
   LogOut,
   Calculator,
+  Calendar,
+  Settings,
 } from "lucide-react";
 
 const sidebarLinks = [
@@ -20,6 +22,8 @@ const sidebarLinks = [
   { to: "/dashboard/documents", icon: FileText, label: "Documents", end: false },
   { to: "/dashboard/scenarios", icon: Calculator, label: "Scenarios", end: false },
   { to: "/dashboard/strategy", icon: Download, label: "Strategy", end: false },
+  { to: "/dashboard/planner", icon: Calendar, label: "Planner", end: false },
+  { to: "/dashboard/settings", icon: Settings, label: "Settings", end: false },
 ];
 
 export function DashboardLayout() {

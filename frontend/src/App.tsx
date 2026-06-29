@@ -19,6 +19,8 @@ import { NotFoundPage } from "@/pages/NotFoundPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
 import { ScenariosPage } from "@/pages/ScenariosPage";
+import { PlannerPage } from "@/pages/PlannerPage";
+import { SettingsPage } from "@/pages/SettingsPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -54,6 +56,8 @@ export default function App() {
                 <Route path="documents" element={<DocumentsPage />} />
                 <Route path="scenarios" element={<ScenariosPage />} />
                 <Route path="strategy" element={<StrategyPage />} />
+                <Route path="planner" element={<PlannerPage />} />
+                <Route path="settings" element={<SettingsPage />} />
               </Route>
 
               {/* 404 */}

@@ -1,4 +1,7 @@
+import json
+
 from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi.responses import Response
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -64,3 +67,30 @@ def update_business_info(
     update_data = data.model_dump(exclude_unset=True)
     update_data["onboarding_completed"] = True
     return services.update_user(db, current_user, **update_data)
+
+
+@router.get("/me/export")
+def export_my_data(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Export all user data as JSON for GDPR compliance."""
+    data = services.export_user_data(db, current_user.id)
+    json_bytes = json.dumps(data, indent=2, ensure_ascii=False).encode("utf-8")
+    return Response(
+        content=json_bytes,
+        media_type="application/json",
+        headers={
+            "Content-Disposition": 'attachment; filename="my_data_export.json"',
+        },
+    )
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+def delete_my_account(
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """Delete the current user's account and all associated data (GDPR right to erasure)."""
+    services.delete_user_account(db, current_user.id)
+    return None

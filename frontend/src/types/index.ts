@@ -166,3 +166,31 @@ export interface ZipUploadResult {
   errors: number;
   files: { filename: string; status: string }[];
 }
+
+export interface PlannerAction {
+  title: string;
+  description: string;
+  deadline: string;
+  priority: "high" | "medium" | "low";
+}
+
+export interface PlannerMonth {
+  month: string;
+  actions: PlannerAction[];
+}
+
+export interface PlannerResponse {
+  months: PlannerMonth[];
+}
+
+export interface NewsArticle {
+  title: string;
+  date: string;
+  summary: string;
+  impact: "high" | "medium" | "low";
+  category: string;
+}
+
+export interface NewsResponse {
+  articles: NewsArticle[];
+}

@@ -45,3 +45,12 @@ export async function resetPassword(token: string, newPassword: string): Promise
   const response = await client.post<{ message: string }>("/auth/reset-password", { token, new_password: newPassword });
   return response.data;
 }
+
+export async function exportMyData(): Promise<Blob> {
+  const response = await client.get("/users/me/export", { responseType: "blob" });
+  return response.data;
+}
+
+export async function deleteMyAccount(): Promise<void> {
+  await client.delete("/users/me");
+}

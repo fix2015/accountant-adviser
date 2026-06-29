@@ -18,6 +18,7 @@ import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
 import { ProgressTracker } from "@/components/dashboard/ProgressTracker";
 import { HealthScore } from "@/components/dashboard/HealthScore";
 import { TaxComparison } from "@/components/dashboard/TaxComparison";
+import { NewsFeed } from "@/components/dashboard/NewsFeed";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
@@ -343,6 +344,9 @@ export function DashboardPage() {
           <KnowledgePanel node={selectedNode} onClose={() => setSelectedNode(null)} />
         </div>
       </Card>
+
+      {/* HMRC News Feed */}
+      <NewsFeed />
     </div>
   );
 }

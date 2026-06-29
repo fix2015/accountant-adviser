@@ -54,3 +54,182 @@ def list_users(db: Session, skip: int = 0, limit: int = 50) -> tuple[list[User],
     total = db.query(User).count()
     users = db.query(User).offset(skip).limit(limit).all()
     return users, total
+
+
+def export_user_data(db: Session, user_id: int) -> dict:
+    """Collect ALL user data for GDPR export."""
+    from app.modules.payments.models import Payment, Consultation
+    from app.modules.documents.models import Document
+    from app.modules.chat.models import Message
+    from app.modules.knowledge.models import KnowledgeEntry
+
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        return {}
+
+    # User profile
+    profile = {
+        "id": user.id,
+        "email": user.email,
+        "full_name": user.full_name,
+        "role": user.role.value if user.role else None,
+        "is_active": user.is_active,
+        "business_type": user.business_type,
+        "revenue_range": user.revenue_range,
+        "employee_count": user.employee_count,
+        "onboarding_completed": user.onboarding_completed,
+        "created_at": str(user.created_at) if user.created_at else None,
+    }
+
+    # Consultations
+    consultations = db.query(Consultation).filter(Consultation.user_id == user_id).all()
+    consultations_data = [
+        {
+            "id": c.id,
+            "status": c.status.value if c.status else None,
+            "questions_used": c.questions_used,
+            "questions_limit": c.questions_limit,
+            "is_trial": c.is_trial,
+            "created_at": str(c.created_at) if c.created_at else None,
+        }
+        for c in consultations
+    ]
+
+    # Payments
+    payments = db.query(Payment).filter(Payment.user_id == user_id).all()
+    payments_data = [
+        {
+            "id": p.id,
+            "amount": p.amount,
+            "currency": p.currency,
+            "status": p.status.value if p.status else None,
+            "payment_type": p.payment_type.value if p.payment_type else None,
+            "created_at": str(p.created_at) if p.created_at else None,
+        }
+        for p in payments
+    ]
+
+    # Documents (metadata only, not file content)
+    documents = db.query(Document).filter(Document.user_id == user_id).all()
+    documents_data = [
+        {
+            "id": d.id,
+            "filename": d.filename,
+            "file_type": d.file_type,
+            "file_size": d.file_size,
+            "status": d.status.value if d.status else None,
+            "document_type": d.document_type,
+            "created_at": str(d.created_at) if d.created_at else None,
+        }
+        for d in documents
+    ]
+
+    # Messages
+    messages = db.query(Message).filter(Message.user_id == user_id).all()
+    messages_data = [
+        {
+            "id": m.id,
+            "consultation_id": m.consultation_id,
+            "role": m.role.value if m.role else None,
+            "content": m.content,
+            "created_at": str(m.created_at) if m.created_at else None,
+        }
+        for m in messages
+    ]
+
+    # Knowledge entries
+    consultation_ids = [c.id for c in consultations]
+    knowledge_entries = (
+        db.query(KnowledgeEntry)
+        .filter(KnowledgeEntry.consultation_id.in_(consultation_ids))
+        .all()
+        if consultation_ids
+        else []
+    )
+    knowledge_data = [
+        {
+            "id": k.id,
+            "category": k.category.value if k.category else None,
+            "title": k.title,
+            "content": k.content,
+            "created_at": str(k.created_at) if k.created_at else None,
+        }
+        for k in knowledge_entries
+    ]
+
+    return {
+        "profile": profile,
+        "consultations": consultations_data,
+        "payments": payments_data,
+        "documents": documents_data,
+        "messages": messages_data,
+        "knowledge_entries": knowledge_data,
+        "exported_at": str(__import__("datetime").datetime.utcnow()),
+    }
+
+
+def delete_user_account(db: Session, user_id: int) -> None:
+    """Cascading delete of all user data for GDPR compliance."""
+    import boto3
+    from app.config import settings
+    from app.modules.payments.models import Payment, Consultation
+    from app.modules.documents.models import Document
+    from app.modules.chat.models import Message
+    from app.modules.knowledge.models import KnowledgeEntry
+    from app.modules.auth.models import RefreshToken
+
+    # Get user consultations for knowledge entry cleanup
+    consultations = db.query(Consultation).filter(Consultation.user_id == user_id).all()
+    consultation_ids = [c.id for c in consultations]
+
+    # Delete knowledge entries
+    if consultation_ids:
+        db.query(KnowledgeEntry).filter(
+            KnowledgeEntry.consultation_id.in_(consultation_ids)
+        ).delete(synchronize_session=False)
+
+    # Delete messages
+    db.query(Message).filter(Message.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Delete documents (+ S3 files)
+    documents = db.query(Document).filter(Document.user_id == user_id).all()
+    if documents:
+        try:
+            s3 = boto3.client(
+                "s3",
+                aws_access_key_id=settings.AWS_ACCESS_KEY_ID,
+                aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY,
+                region_name=settings.AWS_S3_REGION,
+            )
+            for doc in documents:
+                try:
+                    s3.delete_object(Bucket=settings.AWS_S3_BUCKET, Key=doc.s3_key)
+                except Exception:
+                    pass
+        except Exception:
+            pass
+        db.query(Document).filter(Document.user_id == user_id).delete(
+            synchronize_session=False
+        )
+
+    # Delete consultations
+    db.query(Consultation).filter(Consultation.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Delete payments
+    db.query(Payment).filter(Payment.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Delete refresh tokens
+    db.query(RefreshToken).filter(RefreshToken.user_id == user_id).delete(
+        synchronize_session=False
+    )
+
+    # Delete user
+    db.query(User).filter(User.id == user_id).delete(synchronize_session=False)
+
+    db.commit()

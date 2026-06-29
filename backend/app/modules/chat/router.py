@@ -1,7 +1,9 @@
 import json
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from fastapi.responses import StreamingResponse, Response
+from slowapi import Limiter
+from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
 
 from app.database import get_db
@@ -18,15 +20,21 @@ from app.modules.chat.schemas import (
     HealthScoreResponse,
     ScenarioRequest,
     ScenarioResponse,
+    PlannerResponse,
+    NewsResponse,
+    NewsArticle,
 )
 from app.modules.chat import services
 from app.modules.notifications.email_service import send_consultation_summary
 
+limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/chat", tags=["chat"])
 
 
 @router.post("/send", response_model=ChatResponse)
+@limiter.limit("20/minute")
 def send_message(
+    request: Request,
     data: ChatRequest,
     current_user: User = Depends(get_current_user),
     consultation: Consultation = Depends(get_active_consultation),
@@ -58,7 +66,9 @@ def send_message(
 
 
 @router.post("/send/stream")
+@limiter.limit("20/minute")
 def send_message_stream(
+    request: Request,
     data: ChatRequest,
     current_user: User = Depends(get_current_user),
     consultation: Consultation = Depends(get_active_consultation),
@@ -202,7 +212,9 @@ def get_accountant_briefing(
 
 
 @router.post("/scenario", response_model=ScenarioResponse)
+@limiter.limit("10/minute")
 def calculate_scenario(
+    request: Request,
     data: ScenarioRequest,
     current_user: User = Depends(get_current_user),
     consultation: Consultation = Depends(get_active_consultation),
@@ -218,13 +230,89 @@ def calculate_scenario(
 
 
 @router.get("/health-score", response_model=HealthScoreResponse)
+@limiter.limit("5/minute")
 def get_health_score(
+    request: Request,
     current_user: User = Depends(get_current_user),
     consultation: Consultation = Depends(get_active_consultation),
     db: Session = Depends(get_db),
 ):
     """Analyze the knowledge base and return a business health score."""
     return services.generate_health_score(db, consultation.id)
+
+
+@router.get("/planner", response_model=PlannerResponse)
+def get_planner(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Generate a 12-month tax action plan based on the user's knowledge base."""
+    return services.generate_planner(db, consultation.id)
+
+
+@router.get("/news", response_model=NewsResponse)
+def get_news():
+    """Return curated UK tax news with key 2025/26 updates."""
+    articles = [
+        NewsArticle(
+            title="Employer NIC increase to 15% from April 2025",
+            date="2025-04-06",
+            summary="Employer National Insurance contributions rise from 13.8% to 15%, with the threshold dropping from £9,100 to £5,000. This significantly increases employment costs for businesses with staff.",
+            impact="high",
+            category="National Insurance",
+        ),
+        NewsArticle(
+            title="Making Tax Digital for Income Tax delayed to April 2026",
+            date="2025-03-01",
+            summary="HMRC has delayed mandatory Making Tax Digital for Income Tax Self Assessment (MTD ITSA) to April 2026 for taxpayers with income over £50,000. Those with income over £30,000 will join from April 2027.",
+            impact="high",
+            category="Compliance",
+        ),
+        NewsArticle(
+            title="Dividend allowance reduced to £500",
+            date="2025-04-06",
+            summary="The tax-free dividend allowance has been cut from £1,000 to £500 for 2025/26. Director-shareholders should review their salary/dividend split strategy to minimise the impact.",
+            impact="high",
+            category="Dividends",
+        ),
+        NewsArticle(
+            title="Corporation tax small profits rate remains 19%",
+            date="2025-04-06",
+            summary="Companies with profits under £50,000 continue to pay corporation tax at 19%. The main rate of 25% applies to profits over £250,000, with marginal relief available between £50,000 and £250,000.",
+            impact="medium",
+            category="Corporation Tax",
+        ),
+        NewsArticle(
+            title="National Living Wage increases to £12.21",
+            date="2025-04-01",
+            summary="The National Living Wage for workers aged 21 and over rises to £12.21 per hour from April 2025. Employers must update payroll systems and budget for increased staff costs.",
+            impact="medium",
+            category="Employment",
+        ),
+        NewsArticle(
+            title="R&D tax relief merged scheme from April 2024",
+            date="2024-04-01",
+            summary="The merged R&D tax relief scheme replaces the previous SME and RDEC schemes. The new scheme offers a single above-the-line credit of 20% for qualifying R&D expenditure.",
+            impact="medium",
+            category="R&D Tax Relief",
+        ),
+        NewsArticle(
+            title="Capital gains tax rates increased for residential property",
+            date="2024-10-30",
+            summary="The lower rate of CGT on residential property disposals increased from 18% to 24%, and the higher rate from 28% to 32%. Basic rate CGT on other assets rose from 10% to 18%, and higher rate from 20% to 24%.",
+            impact="high",
+            category="Capital Gains Tax",
+        ),
+        NewsArticle(
+            title="Self-Assessment deadline: 31 January 2027 for 2025/26",
+            date="2025-04-06",
+            summary="The online Self Assessment filing deadline for the 2025/26 tax year is 31 January 2027. Payment of any tax due, plus the first payment on account for 2026/27, is also due by this date.",
+            impact="medium",
+            category="Self Assessment",
+        ),
+    ]
+    return NewsResponse(articles=articles)
 
 
 @router.post("/finish")

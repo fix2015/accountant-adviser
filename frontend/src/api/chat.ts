@@ -1,5 +1,5 @@
 import client from "./client";
-import type { ChatMessage, ChatSession, HealthScoreResponse, ScenarioRequest, ScenarioResponse } from "@/types";
+import type { ChatMessage, ChatSession, HealthScoreResponse, ScenarioRequest, ScenarioResponse, PlannerResponse, NewsResponse } from "@/types";
 
 export async function getChatSession(): Promise<ChatSession> {
   const response = await client.get<ChatSession>("/chat/session");
@@ -33,6 +33,16 @@ export async function calculateScenario(data: ScenarioRequest): Promise<Scenario
 
 export async function finishConsultation(): Promise<{ message: string }> {
   const response = await client.post("/chat/finish");
+  return response.data;
+}
+
+export async function getPlanner(): Promise<PlannerResponse> {
+  const response = await client.get("/chat/planner");
+  return response.data;
+}
+
+export async function getNews(): Promise<NewsResponse> {
+  const response = await client.get("/chat/news");
   return response.data;
 }
 

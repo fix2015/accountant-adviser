@@ -418,6 +418,109 @@ def generate_scenario(db: Session, consultation_id: int, scenario_data: dict) ->
     return data
 
 
+def generate_planner(db: Session, consultation_id: int) -> dict:
+    """Generate a 12-month tax action plan based on the user's knowledge base."""
+    import json as _json
+
+    knowledge_base = get_knowledge_base_text(db, consultation_id)
+
+    prompt = (
+        "Generate a 12-month UK tax action plan for this business. "
+        "Return ONLY valid JSON array with no markdown formatting, no code fences, no explanation.\n\n"
+        '[{"month": "April 2026", "actions": [{"title": "...", "description": "...", '
+        '"deadline": "YYYY-MM-DD", "priority": "high|medium|low"}]}]\n\n'
+        "Cover all 12 months from April 2026 to March 2027. Include key HMRC deadlines, "
+        "VAT return dates, payroll obligations, Self Assessment, Corporation Tax, "
+        "and strategic tax planning actions.\n\n"
+        "Knowledge base:\n" + knowledge_base
+    )
+
+    client = get_openai_client()
+    response = client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=3000,
+        temperature=0.4,
+    )
+
+    raw = response.choices[0].message.content.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+    try:
+        data = _json.loads(raw)
+    except _json.JSONDecodeError:
+        # Return a sensible default plan
+        data = [
+            {
+                "month": "April 2026",
+                "actions": [
+                    {
+                        "title": "Start of new tax year",
+                        "description": "Review tax-efficient salary and dividend strategy for 2026/27",
+                        "deadline": "2026-04-06",
+                        "priority": "high",
+                    }
+                ],
+            },
+            {
+                "month": "July 2026",
+                "actions": [
+                    {
+                        "title": "Second payment on account",
+                        "description": "Pay second instalment of income tax for 2025/26",
+                        "deadline": "2026-07-31",
+                        "priority": "high",
+                    }
+                ],
+            },
+            {
+                "month": "January 2027",
+                "actions": [
+                    {
+                        "title": "Self Assessment deadline",
+                        "description": "Submit 2025/26 Self Assessment tax return and pay balancing payment",
+                        "deadline": "2027-01-31",
+                        "priority": "high",
+                    }
+                ],
+            },
+        ]
+
+    # Validate structure
+    if not isinstance(data, list):
+        data = []
+
+    months = []
+    for item in data:
+        if not isinstance(item, dict):
+            continue
+        month_name = str(item.get("month", "Unknown"))
+        actions_raw = item.get("actions", [])
+        if not isinstance(actions_raw, list):
+            actions_raw = []
+        actions = []
+        for a in actions_raw:
+            if not isinstance(a, dict):
+                continue
+            priority = str(a.get("priority", "medium")).lower()
+            if priority not in ("high", "medium", "low"):
+                priority = "medium"
+            actions.append(
+                {
+                    "title": str(a.get("title", "")),
+                    "description": str(a.get("description", "")),
+                    "deadline": str(a.get("deadline", "")),
+                    "priority": priority,
+                }
+            )
+        months.append({"month": month_name, "actions": actions})
+
+    return {"months": months}
+
+
 def generate_accountant_briefing(db: Session, consultation_id: int) -> str:
     """Compile a briefing document that a real accountant can quickly review."""
     knowledge_base = get_knowledge_base_text(db, consultation_id)
