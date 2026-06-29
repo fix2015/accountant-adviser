@@ -144,15 +144,45 @@ const priorityConfig = {
   },
 };
 
+function parseDeadline(action: PlannerAction, monthStr: string): string {
+  if (action.deadline && action.deadline !== "Ongoing") return action.deadline;
+  const monthsMap: Record<string, string> = {
+    January: "01", February: "02", March: "03", April: "04",
+    May: "05", June: "06", July: "07", August: "08",
+    September: "09", October: "10", November: "11", December: "12",
+  };
+  const parts = monthStr.split(" ");
+  const m = monthsMap[parts[0]] || "01";
+  const y = parts[1] || "2026";
+  return `${y}-${m}-01`;
+}
+
+function openGoogleCalendar(action: PlannerAction, monthStr: string) {
+  const date = parseDeadline(action, monthStr).replace(/-/g, "");
+  const url = new URL("https://calendar.google.com/calendar/render");
+  url.searchParams.set("action", "TEMPLATE");
+  url.searchParams.set("text", action.title);
+  url.searchParams.set("dates", `${date}/${date}`);
+  url.searchParams.set("details", action.description);
+  url.searchParams.set("sf", "true");
+  window.open(url.toString(), "_blank");
+}
+
+function openOutlookCalendar(action: PlannerAction, monthStr: string) {
+  const date = parseDeadline(action, monthStr);
+  const url = new URL("https://outlook.live.com/calendar/0/action/compose");
+  url.searchParams.set("subject", action.title);
+  url.searchParams.set("body", action.description);
+  url.searchParams.set("startdt", date);
+  url.searchParams.set("enddt", date);
+  url.searchParams.set("allday", "true");
+  window.open(url.toString(), "_blank");
+}
+
 function ActionCard({ action, index, monthStr }: { action: PlannerAction; index: number; monthStr: string }) {
   const config = priorityConfig[action.priority as keyof typeof priorityConfig] || priorityConfig.medium;
   const Icon = config.icon;
-
-  const handleAddToCalendar = (e: React.MouseEvent) => {
-    e.stopPropagation();
-    const ics = generateICSEvent(action, monthStr);
-    downloadICS(ics, `${action.title.replace(/\s+/g, "_")}.ics`);
-  };
+  const [showCalMenu, setShowCalMenu] = useState(false);
 
   return (
     <motion.div
@@ -184,14 +214,41 @@ function ActionCard({ action, index, monthStr }: { action: PlannerAction; index:
                   <span>Deadline: {action.deadline}</span>
                 </div>
               )}
-              <button
-                onClick={handleAddToCalendar}
-                className="flex items-center gap-1 text-[10px] text-ds-text-accent hover:text-ds-accent-primary transition-colors"
-                title="Add to calendar"
-              >
-                <CalendarPlus className="h-3 w-3" />
-                Add to Calendar
-              </button>
+              <div className="relative">
+                <button
+                  onClick={(e) => { e.stopPropagation(); setShowCalMenu(!showCalMenu); }}
+                  className="flex items-center gap-1 text-[10px] text-ds-text-accent hover:text-ds-accent-primary transition-colors"
+                >
+                  <CalendarPlus className="h-3 w-3" />
+                  Add to Calendar
+                </button>
+                {showCalMenu && (
+                  <div className="absolute right-0 bottom-6 z-10 w-44 rounded-lg border border-ds-border-default bg-ds-bg-tertiary shadow-xl py-1">
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openGoogleCalendar(action, monthStr); setShowCalMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-bg-surface transition-colors"
+                    >
+                      Google Calendar
+                    </button>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); openOutlookCalendar(action, monthStr); setShowCalMenu(false); }}
+                      className="w-full text-left px-3 py-2 text-xs text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-bg-surface transition-colors"
+                    >
+                      Outlook Calendar
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        downloadICS(generateICSEvent(action, monthStr), `${action.title.replace(/\s+/g, "_")}.ics`);
+                        setShowCalMenu(false);
+                      }}
+                      className="w-full text-left px-3 py-2 text-xs text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-bg-surface transition-colors"
+                    >
+                      Apple Calendar (.ics)
+                    </button>
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>
