@@ -6,6 +6,11 @@ export async function getChatSession(): Promise<ChatSession> {
   return response.data;
 }
 
+export async function getChatSuggestions(): Promise<string[]> {
+  const response = await client.get<{ suggestions: string[] }>("/chat/suggestions");
+  return response.data.suggestions;
+}
+
 export async function getChatHistory(): Promise<ChatMessage[]> {
   const response = await client.get<{ messages: ChatMessage[]; total: number }>("/chat/history/");
   return response.data.messages;

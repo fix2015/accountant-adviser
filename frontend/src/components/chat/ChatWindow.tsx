@@ -6,8 +6,9 @@ import { QuestionCounter } from "./QuestionCounter";
 import { useChat } from "@/hooks/useChat";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/Button";
-import { Bot, Sparkles } from "lucide-react";
+import { Bot, Sparkles, Zap } from "lucide-react";
 import { getActiveConsultation } from "@/api/payments";
+import { getChatSuggestions } from "@/api/chat";
 import type { ConsultationInfo } from "@/types";
 
 export function ChatWindow() {
@@ -15,13 +16,21 @@ export function ChatWindow() {
   const { messages, isStreaming, streamingContent, error, sendMessage, stopStreaming, loadHistory } = useChat();
   const scrollRef = useRef<HTMLDivElement>(null);
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
+  const [suggestions, setSuggestions] = useState<string[]>([]);
 
   const questionsUsed = consultation?.questions_used ?? 0;
   const questionsTotal = consultation?.questions_limit ?? 0;
   const isOutOfQuestions = questionsUsed >= questionsTotal;
 
+  const loadSuggestions = () => {
+    getChatSuggestions()
+      .then(setSuggestions)
+      .catch(() => setSuggestions([]));
+  };
+
   useEffect(() => {
     loadHistory();
+    loadSuggestions();
     getActiveConsultation()
       .then(setConsultation)
       .catch(() => setConsultation(null));
@@ -36,13 +45,15 @@ export function ChatWindow() {
   const handleSend = async (content: string) => {
     sendMessage(content);
     refreshUser();
-    // Refresh consultation data after sending
+    // Refresh consultation + suggestions after sending
     try {
       const updated = await getActiveConsultation();
       setConsultation(updated);
     } catch {
       // ignore
     }
+    // Delay suggestion refresh to let the response complete
+    setTimeout(loadSuggestions, 3000);
   };
 
   return (
@@ -123,6 +134,27 @@ export function ChatWindow() {
               Upgrade Consultation
             </Button>
           </Link>
+        </div>
+      )}
+
+      {/* Quick question suggestions */}
+      {suggestions.length > 0 && !isOutOfQuestions && !isStreaming && (
+        <div className="border-t border-ds-border-default bg-ds-bg-secondary/50 px-4 py-2">
+          <div className="flex items-center gap-1.5 mb-1.5">
+            <Zap className="h-3 w-3 text-ds-text-accent" />
+            <span className="text-[10px] font-medium text-ds-text-muted uppercase tracking-wider">Quick questions</span>
+          </div>
+          <div className="flex flex-wrap gap-1.5">
+            {suggestions.map((s) => (
+              <button
+                key={s}
+                onClick={() => handleSend(s)}
+                className="text-[11px] text-ds-text-secondary rounded-lg border border-ds-border-default px-2.5 py-1.5 hover:border-ds-border-accent hover:text-ds-text-primary hover:bg-ds-bg-surface/50 transition-all duration-200 max-w-[280px] truncate"
+              >
+                {s}
+              </button>
+            ))}
+          </div>
         </div>
       )}
 

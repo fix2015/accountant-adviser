@@ -9,6 +9,7 @@ from app.dependencies import get_current_user, get_active_consultation
 from app.modules.users.models import User
 from app.modules.payments.models import Consultation
 from app.modules.payments.services import increment_question_count
+from app.modules.chat.models import MessageRole
 from app.modules.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -101,6 +102,86 @@ def get_chat_history(
         db, consultation.id, skip, limit
     )
     return MessageListResponse(messages=messages, total=total)
+
+
+@router.get("/suggestions")
+def get_suggestions(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Return contextual quick question suggestions based on conversation state."""
+    messages, total = services.get_consultation_messages(db, consultation.id, 0, 100)
+
+    # If no messages yet, return starter questions
+    if total == 0:
+        return {
+            "suggestions": [
+                "What's the most tax-efficient salary and dividend split for my company?",
+                "What expenses can I claim to reduce my tax bill?",
+                "Should I register for VAT? Show me the numbers",
+                "Compare sole trader vs limited company for my income level",
+                "What are my key tax deadlines and how much should I set aside?",
+                "How can I use pension contributions to reduce my tax?",
+            ]
+        }
+
+    # After conversation started, return follow-up questions
+    last_messages = [
+        m.content for m in messages[-3:] if m.role == MessageRole.ASSISTANT
+    ]
+    context = " ".join(last_messages)[:500]
+
+    # Context-aware suggestions based on keywords
+    suggestions = []
+
+    if any(w in context.lower() for w in ["salary", "dividend", "director"]):
+        suggestions.extend(
+            [
+                "Show me the exact monthly take-home for each strategy",
+                "What if my company profit is £80,000 instead?",
+                "How do employer pension contributions affect the numbers?",
+            ]
+        )
+    if any(w in context.lower() for w in ["vat", "threshold", "registration"]):
+        suggestions.extend(
+            [
+                "Compare flat rate VAT scheme vs standard VAT for my business",
+                "When exactly should I register based on my revenue?",
+            ]
+        )
+    if any(w in context.lower() for w in ["expense", "deduction", "claim"]):
+        suggestions.extend(
+            [
+                "What home office expenses can I claim with exact amounts?",
+                "Show me the capital allowance calculation for equipment",
+            ]
+        )
+    if any(w in context.lower() for w in ["corporation tax", "company", "limited"]):
+        suggestions.extend(
+            [
+                "How does marginal relief work between £50k-£250k profit?",
+                "What's the R&D tax credit calculation for my company?",
+            ]
+        )
+
+    # Always add some universal follow-ups
+    suggestions.extend(
+        [
+            "Summarise all strategies with a comparison table",
+            "What should I do before the end of the tax year?",
+            "How much tax would I save with a £40k pension contribution?",
+        ]
+    )
+
+    # Deduplicate and limit
+    seen = set()
+    unique = []
+    for s in suggestions:
+        if s not in seen:
+            seen.add(s)
+            unique.append(s)
+    return {"suggestions": unique[:6]}
 
 
 @router.post("/report")
