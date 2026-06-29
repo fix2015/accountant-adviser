@@ -166,6 +166,19 @@ def create_document(
             f"File type .{extension} is not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
         )
 
+    # Check for duplicate: same filename + same file size in this consultation
+    existing = (
+        db.query(Document)
+        .filter(
+            Document.consultation_id == consultation_id,
+            Document.filename == filename,
+            Document.file_size == file_size,
+        )
+        .first()
+    )
+    if existing:
+        raise ValueError(f"File '{filename}' has already been uploaded")
+
     s3_key = f"{settings.AWS_S3_PREFIX}/documents/{user_id}/{consultation_id}/{uuid.uuid4().hex}_{filename}"
 
     upload_to_s3(file_content, s3_key, content_type)

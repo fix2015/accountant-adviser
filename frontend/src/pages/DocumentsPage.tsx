@@ -40,11 +40,15 @@ export function DocumentsPage() {
       await upload(file);
       toast("success", `${file.name} uploaded successfully`);
     } catch (err: unknown) {
-      // Check if it's a trial limit error (403)
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { status?: number; data?: { detail?: string } } };
         if (axiosErr.response?.status === 403) {
           setShowUpgradeModal(true);
+          return;
+        }
+        const detail = axiosErr.response?.data?.detail || "";
+        if (detail.includes("already been uploaded")) {
+          toast("error", `${file.name} has already been uploaded`);
           return;
         }
       }
