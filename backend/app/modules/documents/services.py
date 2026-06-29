@@ -59,7 +59,9 @@ def extract_text_from_docx(file_content: bytes) -> str:
             text_parts.append(paragraph.text)
     for table in doc.tables:
         for row in table.rows:
-            row_text = " | ".join(cell.text.strip() for cell in row.cells if cell.text.strip())
+            row_text = " | ".join(
+                cell.text.strip() for cell in row.cells if cell.text.strip()
+            )
             if row_text:
                 text_parts.append(row_text)
     return "\n".join(text_parts)
@@ -93,7 +95,9 @@ def create_document(
 ) -> Document:
     extension = filename.rsplit(".", 1)[-1].lower() if "." in filename else ""
     if extension not in ALLOWED_EXTENSIONS:
-        raise ValueError(f"File type .{extension} is not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
+        raise ValueError(
+            f"File type .{extension} is not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}"
+        )
 
     s3_key = f"{settings.AWS_S3_PREFIX}/documents/{user_id}/{consultation_id}/{uuid.uuid4().hex}_{filename}"
 
@@ -164,7 +168,9 @@ def get_consultation_documents(
 ) -> tuple[list[Document], int]:
     query = db.query(Document).filter(Document.consultation_id == consultation_id)
     total = query.count()
-    documents = query.order_by(Document.created_at.desc()).offset(skip).limit(limit).all()
+    documents = (
+        query.order_by(Document.created_at.desc()).offset(skip).limit(limit).all()
+    )
     return documents, total
 
 

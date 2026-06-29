@@ -1,7 +1,7 @@
 import uuid
 from datetime import datetime, timedelta
 
-from jose import JWTError, jwt
+from jose import jwt
 from sqlalchemy.orm import Session
 
 from app.config import settings
@@ -19,12 +19,16 @@ def create_access_token(user: User) -> str:
         "role": user.role.value,
         "exp": expire,
     }
-    return jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
+    return jwt.encode(
+        payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM
+    )
 
 
 def create_refresh_token(db: Session, user: User) -> str:
     token_value = str(uuid.uuid4())
-    expires_at = datetime.utcnow() + timedelta(days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS)
+    expires_at = datetime.utcnow() + timedelta(
+        days=settings.JWT_REFRESH_TOKEN_EXPIRE_DAYS
+    )
     refresh_token = RefreshToken(
         user_id=user.id,
         token=token_value,
@@ -40,7 +44,7 @@ def validate_refresh_token(db: Session, token: str) -> RefreshToken | None:
         db.query(RefreshToken)
         .filter(
             RefreshToken.token == token,
-            RefreshToken.is_revoked == False,
+            RefreshToken.is_revoked.is_(False),
             RefreshToken.expires_at > datetime.utcnow(),
         )
         .first()
@@ -58,6 +62,6 @@ def revoke_refresh_token(db: Session, token: str) -> None:
 def revoke_all_user_tokens(db: Session, user_id: int) -> None:
     db.query(RefreshToken).filter(
         RefreshToken.user_id == user_id,
-        RefreshToken.is_revoked == False,
+        RefreshToken.is_revoked.is_(False),
     ).update({"is_revoked": True})
     db.commit()

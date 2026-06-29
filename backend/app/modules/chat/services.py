@@ -10,8 +10,6 @@ from reportlab.platypus import (
     SimpleDocTemplate,
     Paragraph,
     Spacer,
-    Table,
-    TableStyle,
 )
 from sqlalchemy.orm import Session
 
@@ -163,9 +161,7 @@ def get_consultation_messages(
 ) -> tuple[list[Message], int]:
     query = db.query(Message).filter(Message.consultation_id == consultation_id)
     total = query.count()
-    messages = (
-        query.order_by(Message.created_at.asc()).offset(skip).limit(limit).all()
-    )
+    messages = query.order_by(Message.created_at.asc()).offset(skip).limit(limit).all()
     return messages, total
 
 
@@ -293,9 +289,7 @@ def generate_strategy_report_pdf(
                 elements.append(Paragraph(f"  {safe_line}", body_style))
             else:
                 safe_line = (
-                    line.replace("&", "&amp;")
-                    .replace("<", "&lt;")
-                    .replace(">", "&gt;")
+                    line.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
                 )
                 elements.append(Paragraph(safe_line, body_style))
     else:
@@ -307,15 +301,11 @@ def generate_strategy_report_pdf(
     elements.append(Paragraph("Tax Optimisation Strategies", heading_style))
     if messages:
         for i, msg in enumerate(messages, 1):
-            elements.append(
-                Paragraph(f"Strategy Discussion {i}", subheading_style)
-            )
+            elements.append(Paragraph(f"Strategy Discussion {i}", subheading_style))
             # Clean and escape message content for PDF
             content = msg.content[:3000]  # Limit length
             content = (
-                content.replace("&", "&amp;")
-                .replace("<", "&lt;")
-                .replace(">", "&gt;")
+                content.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
             )
             # Split long content into paragraphs
             for para in content.split("\n"):

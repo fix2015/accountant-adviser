@@ -1,7 +1,12 @@
 from sqlalchemy.orm import Session
 
 from app.modules.users.models import User
-from app.modules.payments.models import Payment, PaymentStatus, Consultation, ConsultationStatus
+from app.modules.payments.models import (
+    Payment,
+    PaymentStatus,
+    Consultation,
+    ConsultationStatus,
+)
 from app.modules.documents.models import Document
 from app.modules.chat.models import Message
 from app.modules.knowledge.models import KnowledgeEntry
@@ -16,9 +21,7 @@ def get_dashboard_stats(db: Session) -> dict:
         .count()
     )
     total_payments = (
-        db.query(Payment)
-        .filter(Payment.status == PaymentStatus.COMPLETED)
-        .count()
+        db.query(Payment).filter(Payment.status == PaymentStatus.COMPLETED).count()
     )
     total_revenue = (
         db.query(Payment)
@@ -47,7 +50,9 @@ def get_all_users(
     db: Session, skip: int = 0, limit: int = 50
 ) -> tuple[list[User], int]:
     total = db.query(User).count()
-    users = db.query(User).order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+    users = (
+        db.query(User).order_by(User.created_at.desc()).offset(skip).limit(limit).all()
+    )
     return users, total
 
 
@@ -86,9 +91,7 @@ def get_all_messages(
     if consultation_id:
         query = query.filter(Message.consultation_id == consultation_id)
     total = query.count()
-    messages = (
-        query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
-    )
+    messages = query.order_by(Message.created_at.desc()).offset(skip).limit(limit).all()
     return messages, total
 
 
@@ -100,9 +103,6 @@ def get_all_knowledge_entries(
         query = query.filter(KnowledgeEntry.consultation_id == consultation_id)
     total = query.count()
     entries = (
-        query.order_by(KnowledgeEntry.created_at.desc())
-        .offset(skip)
-        .limit(limit)
-        .all()
+        query.order_by(KnowledgeEntry.created_at.desc()).offset(skip).limit(limit).all()
     )
     return entries, total

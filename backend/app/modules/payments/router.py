@@ -10,9 +10,7 @@ from app.modules.payments.models import PaymentType
 from app.modules.payments.schemas import (
     CreateCheckoutRequest,
     CheckoutResponse,
-    PaymentResponse,
     PaymentListResponse,
-    ConsultationResponse,
     ConsultationListResponse,
 )
 from app.modules.payments import services
@@ -26,10 +24,7 @@ def create_checkout(
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
-    if (
-        data.payment_type == PaymentType.EXTRA_QUESTIONS
-        and not data.consultation_id
-    ):
+    if data.payment_type == PaymentType.EXTRA_QUESTIONS and not data.consultation_id:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="consultation_id is required for extra_questions payment",

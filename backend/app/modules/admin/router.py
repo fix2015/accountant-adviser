@@ -6,15 +6,13 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import require_admin
 from app.modules.users.models import User
-from app.modules.users.schemas import UserResponse, UserListResponse
+from app.modules.users.schemas import UserListResponse
 from app.modules.payments.schemas import (
-    PaymentResponse,
     PaymentListResponse,
-    ConsultationResponse,
     ConsultationListResponse,
 )
-from app.modules.chat.schemas import MessageResponse, MessageListResponse
-from app.modules.knowledge.schemas import KnowledgeEntryResponse, KnowledgeListResponse
+from app.modules.chat.schemas import MessageListResponse
+from app.modules.knowledge.schemas import KnowledgeListResponse
 from app.modules.admin.schemas import DashboardStats
 from app.modules.admin import services
 

@@ -27,7 +27,9 @@ class Payment(Base):
     __tablename__ = "payments"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     stripe_session_id = Column(String(255), unique=True, nullable=True)
     stripe_payment_intent_id = Column(String(255), nullable=True)
     amount = Column(Integer, nullable=False)  # in pence
@@ -42,9 +44,13 @@ class Consultation(Base):
     __tablename__ = "consultations"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(
+        Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True
+    )
     payment_id = Column(Integer, ForeignKey("payments.id"), nullable=False)
-    status = Column(Enum(ConsultationStatus), default=ConsultationStatus.ACTIVE, nullable=False)
+    status = Column(
+        Enum(ConsultationStatus), default=ConsultationStatus.ACTIVE, nullable=False
+    )
     questions_used = Column(Integer, default=0, nullable=False)
     questions_limit = Column(Integer, default=50, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)

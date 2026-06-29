@@ -10,12 +10,13 @@ from app.modules.auth.schemas import (
 )
 from app.modules.auth import services as auth_services
 from app.modules.users import services as user_services
-from app.modules.users.models import User
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post(
+    "/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED
+)
 def register(data: RegisterRequest, db: Session = Depends(get_db)):
     existing = user_services.get_user_by_email(db, data.email)
     if existing:
@@ -39,7 +40,9 @@ def register(data: RegisterRequest, db: Session = Depends(get_db)):
 @router.post("/login", response_model=TokenResponse)
 def login(data: LoginRequest, db: Session = Depends(get_db)):
     user = user_services.get_user_by_email(db, data.email)
-    if not user or not user_services.verify_password(data.password, user.hashed_password):
+    if not user or not user_services.verify_password(
+        data.password, user.hashed_password
+    ):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",

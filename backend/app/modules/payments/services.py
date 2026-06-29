@@ -67,9 +67,7 @@ def create_checkout_session(
 def handle_checkout_completed(db: Session, session: dict) -> None:
     stripe_session_id = session["id"]
     payment = (
-        db.query(Payment)
-        .filter(Payment.stripe_session_id == stripe_session_id)
-        .first()
+        db.query(Payment).filter(Payment.stripe_session_id == stripe_session_id).first()
     )
     if not payment:
         return
@@ -109,9 +107,7 @@ def handle_checkout_completed(db: Session, session: dict) -> None:
 def handle_payment_failed(db: Session, session: dict) -> None:
     stripe_session_id = session["id"]
     payment = (
-        db.query(Payment)
-        .filter(Payment.stripe_session_id == stripe_session_id)
-        .first()
+        db.query(Payment).filter(Payment.stripe_session_id == stripe_session_id).first()
     )
     if payment:
         payment.status = PaymentStatus.FAILED
@@ -143,7 +139,11 @@ def get_all_payments(
 ) -> tuple[list[Payment], int]:
     total = db.query(Payment).count()
     payments = (
-        db.query(Payment).order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
+        db.query(Payment)
+        .order_by(Payment.created_at.desc())
+        .offset(skip)
+        .limit(limit)
+        .all()
     )
     return payments, total
 

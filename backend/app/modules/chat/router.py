@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user, get_active_consultation
 from app.modules.users.models import User
-from app.modules.payments.models import Consultation, ConsultationStatus
+from app.modules.payments.models import Consultation
 from app.modules.payments.services import increment_question_count
 from app.modules.chat.schemas import (
     ChatRequest,
@@ -110,13 +110,9 @@ def generate_report(
     consultation: Consultation = Depends(get_active_consultation),
     db: Session = Depends(get_db),
 ):
-    pdf_bytes = services.generate_strategy_report_pdf(
-        db, consultation.id, data.title
-    )
+    pdf_bytes = services.generate_strategy_report_pdf(db, consultation.id, data.title)
     return Response(
         content=pdf_bytes,
         media_type="application/pdf",
-        headers={
-            "Content-Disposition": f'attachment; filename="strategy_report.pdf"'
-        },
+        headers={"Content-Disposition": 'attachment; filename="strategy_report.pdf"'},
     )

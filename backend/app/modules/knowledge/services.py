@@ -10,36 +10,91 @@ from app.modules.documents.models import Document
 # Keywords that hint at category classification
 CATEGORY_KEYWORDS = {
     KnowledgeCategory.INCOME: [
-        "income", "revenue", "salary", "wages", "earnings", "turnover",
-        "sales", "profit", "dividend", "rental income", "commission",
+        "income",
+        "revenue",
+        "salary",
+        "wages",
+        "earnings",
+        "turnover",
+        "sales",
+        "profit",
+        "dividend",
+        "rental income",
+        "commission",
     ],
     KnowledgeCategory.EXPENSES: [
-        "expense", "cost", "expenditure", "payment", "outgoing",
-        "purchase", "subscription", "rent", "utility", "insurance",
+        "expense",
+        "cost",
+        "expenditure",
+        "payment",
+        "outgoing",
+        "purchase",
+        "subscription",
+        "rent",
+        "utility",
+        "insurance",
     ],
     KnowledgeCategory.TAX: [
-        "tax", "hmrc", "vat", "paye", "national insurance", "corporation tax",
-        "capital gains", "self assessment", "tax return", "allowance",
-        "deduction", "relief", "tax code",
+        "tax",
+        "hmrc",
+        "vat",
+        "paye",
+        "national insurance",
+        "corporation tax",
+        "capital gains",
+        "self assessment",
+        "tax return",
+        "allowance",
+        "deduction",
+        "relief",
+        "tax code",
     ],
     KnowledgeCategory.ASSETS: [
-        "asset", "property", "equipment", "vehicle", "investment",
-        "stock", "share", "bond", "savings", "deposit",
+        "asset",
+        "property",
+        "equipment",
+        "vehicle",
+        "investment",
+        "stock",
+        "share",
+        "bond",
+        "savings",
+        "deposit",
     ],
     KnowledgeCategory.LIABILITIES: [
-        "liability", "loan", "mortgage", "debt", "overdraft",
-        "credit", "owing", "payable", "outstanding",
+        "liability",
+        "loan",
+        "mortgage",
+        "debt",
+        "overdraft",
+        "credit",
+        "owing",
+        "payable",
+        "outstanding",
     ],
     KnowledgeCategory.INVOICES: [
-        "invoice", "bill", "billing", "inv", "invoice number",
-        "due date", "payment terms",
+        "invoice",
+        "bill",
+        "billing",
+        "inv",
+        "invoice number",
+        "due date",
+        "payment terms",
     ],
     KnowledgeCategory.RECEIPTS: [
-        "receipt", "transaction", "purchase receipt", "proof of payment",
+        "receipt",
+        "transaction",
+        "purchase receipt",
+        "proof of payment",
     ],
     KnowledgeCategory.CONTRACTS: [
-        "contract", "agreement", "terms", "employment contract",
-        "lease", "tenancy", "service agreement",
+        "contract",
+        "agreement",
+        "terms",
+        "employment contract",
+        "lease",
+        "tenancy",
+        "service agreement",
     ],
 }
 
@@ -57,7 +112,9 @@ def classify_text(text: str) -> KnowledgeCategory:
     return KnowledgeCategory.GENERAL
 
 
-def build_knowledge_from_document(db: Session, document: Document) -> list[KnowledgeEntry]:
+def build_knowledge_from_document(
+    db: Session, document: Document
+) -> list[KnowledgeEntry]:
     if not document.extracted_text:
         return []
 
@@ -150,7 +207,9 @@ def get_consultation_knowledge(
     if category:
         query = query.filter(KnowledgeEntry.category == category)
     total = query.count()
-    entries = query.order_by(KnowledgeEntry.created_at.desc()).offset(skip).limit(limit).all()
+    entries = (
+        query.order_by(KnowledgeEntry.created_at.desc()).offset(skip).limit(limit).all()
+    )
     return entries, total
 
 
@@ -213,9 +272,7 @@ def build_knowledge_graph(db: Session, consultation_id: int) -> dict:
                 "size": 2,
             }
         )
-        edges.append(
-            {"source": "consultation", "target": cat_id, "label": "includes"}
-        )
+        edges.append({"source": "consultation", "target": cat_id, "label": "includes"})
 
     # Add entry nodes
     for entry in entries:

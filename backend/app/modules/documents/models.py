@@ -1,7 +1,16 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import Column, Integer, String, DateTime, ForeignKey, Enum, Text, BigInteger
+from sqlalchemy import (
+    Column,
+    Integer,
+    String,
+    DateTime,
+    ForeignKey,
+    Enum,
+    Text,
+    BigInteger,
+)
 
 from app.database import Base
 
