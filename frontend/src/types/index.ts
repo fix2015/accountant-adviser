@@ -70,6 +70,20 @@ export interface Document {
   created_at: string;
 }
 
+export interface DocumentFolder {
+  name: string;
+  type: string;
+  icon: string;
+  count: number;
+  documents: Document[];
+}
+
+export interface OrganizedDocumentsResponse {
+  folders: DocumentFolder[];
+  total_documents: number;
+  total_folders: number;
+}
+
 export interface KnowledgeNode {
   id: string;
   label: string;

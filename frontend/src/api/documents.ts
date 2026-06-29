@@ -1,5 +1,5 @@
 import client from "./client";
-import type { Document, ZipUploadResult } from "@/types";
+import type { Document, ZipUploadResult, OrganizedDocumentsResponse } from "@/types";
 
 export async function uploadDocument(file: File): Promise<Document> {
   const formData = new FormData();
@@ -21,6 +21,11 @@ export async function deleteDocument(id: number): Promise<void> {
 
 export async function getDocumentSummary(id: string): Promise<{ summary: string }> {
   const response = await client.get(`/documents/${id}/summary`);
+  return response.data;
+}
+
+export async function getOrganizedDocuments(): Promise<OrganizedDocumentsResponse> {
+  const response = await client.get<OrganizedDocumentsResponse>("/documents/organized");
   return response.data;
 }
 

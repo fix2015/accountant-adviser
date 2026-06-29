@@ -34,3 +34,17 @@ class DocumentUploadResponse(BaseModel):
     filename: str
     status: DocumentStatus
     message: str
+
+
+class FolderResponse(BaseModel):
+    name: str
+    type: str
+    icon: str
+    count: int
+    documents: list[DocumentResponse]
+
+
+class OrganizedDocumentsResponse(BaseModel):
+    folders: list[FolderResponse]
+    total_documents: int
+    total_folders: int

@@ -11,6 +11,8 @@ from app.modules.documents.schemas import (
     DocumentResponse,
     DocumentListResponse,
     DocumentUploadResponse,
+    FolderResponse,
+    OrganizedDocumentsResponse,
 )
 from app.modules.documents import services
 
@@ -225,6 +227,56 @@ async def upload_zip(
         "errors": errors,
         "files": results,
     }
+
+
+FOLDER_CONFIG = {
+    "payslip": {"name": "Payslips", "icon": "receipt"},
+    "invoice": {"name": "Invoices", "icon": "file-text"},
+    "bank_statement": {"name": "Bank Statements", "icon": "landmark"},
+    "tax_return": {"name": "Tax Returns", "icon": "file-check"},
+    "receipt": {"name": "Receipts", "icon": "receipt"},
+    "contract": {"name": "Contracts", "icon": "file-signature"},
+    "other": {"name": "Other Documents", "icon": "file"},
+}
+
+
+@router.get("/organized", response_model=OrganizedDocumentsResponse)
+def get_organized_documents(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    documents, total = services.get_consultation_documents(
+        db, consultation.id, skip=0, limit=1000
+    )
+
+    # Group documents by document_type
+    grouped: dict[str, list] = {}
+    for doc in documents:
+        doc_type = doc.document_type or "other"
+        if doc_type not in FOLDER_CONFIG:
+            doc_type = "other"
+        grouped.setdefault(doc_type, []).append(doc)
+
+    folders = []
+    for doc_type, config in FOLDER_CONFIG.items():
+        docs = grouped.get(doc_type, [])
+        if docs:
+            folders.append(
+                FolderResponse(
+                    name=config["name"],
+                    type=doc_type,
+                    icon=config["icon"],
+                    count=len(docs),
+                    documents=[DocumentResponse.model_validate(d) for d in docs],
+                )
+            )
+
+    return OrganizedDocumentsResponse(
+        folders=folders,
+        total_documents=total,
+        total_folders=len(folders),
+    )
 
 
 @router.get("/", response_model=DocumentListResponse)
