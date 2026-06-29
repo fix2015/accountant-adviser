@@ -11,7 +11,7 @@ export async function uploadDocument(file: File): Promise<Document> {
 }
 
 export async function getDocuments(): Promise<Document[]> {
-  const response = await client.get<{ documents: Document[]; total: number }>("/documents");
+  const response = await client.get<{ documents: Document[]; total: number }>("/documents/");
   return response.data.documents;
 }
 

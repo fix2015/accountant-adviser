@@ -7,7 +7,7 @@ export async function getChatSession(): Promise<ChatSession> {
 }
 
 export async function getChatHistory(): Promise<ChatMessage[]> {
-  const response = await client.get<{ messages: ChatMessage[]; total: number }>("/chat/history");
+  const response = await client.get<{ messages: ChatMessage[]; total: number }>("/chat/history/");
   return response.data.messages;
 }
 
