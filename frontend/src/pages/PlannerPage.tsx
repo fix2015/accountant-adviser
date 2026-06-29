@@ -4,7 +4,7 @@ import { Calendar, Clock, AlertTriangle, CheckCircle2, Info } from "lucide-react
 import { Card } from "@/components/ui/Card";
 import { Spinner } from "@/components/ui/Spinner";
 import { getPlanner } from "@/api/chat";
-import type { PlannerMonth } from "@/types";
+import type { PlannerMonth, PlannerAction } from "@/types";
 
 const priorityConfig = {
   high: {
@@ -25,7 +25,7 @@ const priorityConfig = {
 };
 
 function ActionCard({ action, index }: { action: PlannerAction; index: number }) {
-  const config = priorityConfig[action.priority] || priorityConfig.medium;
+  const config = priorityConfig[action.priority as keyof typeof priorityConfig] || priorityConfig.medium;
   const Icon = config.icon;
 
   return (
