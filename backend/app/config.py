@@ -37,12 +37,13 @@ class Settings(BaseSettings):
 
     AWS_ACCESS_KEY_ID: str = ""
     AWS_SECRET_ACCESS_KEY: str = ""
-    AWS_S3_BUCKET: str = "ai-adviser-docs"
+    AWS_S3_BUCKET: str = "gport"
     AWS_S3_REGION: str = "eu-central-1"
+    AWS_S3_PREFIX: str = "ai-adviser"
 
     @property
     def S3_BASE_URL(self) -> str:
-        return f"https://{self.AWS_S3_BUCKET}.s3.{self.AWS_S3_REGION}.amazonaws.com"
+        return f"https://{self.AWS_S3_BUCKET}.s3.{self.AWS_S3_REGION}.amazonaws.com/{self.AWS_S3_PREFIX}"
 
     FIRST_ADMIN_EMAIL: str = "admin@ai-adviser.probooking.app"
     FIRST_ADMIN_PASSWORD: str = "admin"

@@ -95,7 +95,7 @@ def create_document(
     if extension not in ALLOWED_EXTENSIONS:
         raise ValueError(f"File type .{extension} is not supported. Allowed: {', '.join(ALLOWED_EXTENSIONS)}")
 
-    s3_key = f"documents/{user_id}/{consultation_id}/{uuid.uuid4().hex}_{filename}"
+    s3_key = f"{settings.AWS_S3_PREFIX}/documents/{user_id}/{consultation_id}/{uuid.uuid4().hex}_{filename}"
 
     upload_to_s3(file_content, s3_key, content_type)
 
