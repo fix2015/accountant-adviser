@@ -12,10 +12,8 @@ import {
   MessageSquare,
   Check,
   Sparkles,
-  X,
 } from "lucide-react";
 import { Button } from "@/components/ui/Button";
-import { Card } from "@/components/ui/Card";
 import { FileUpload } from "@/components/documents/FileUpload";
 import { useDocuments } from "@/hooks/useDocuments";
 import { useAuth } from "@/hooks/useAuth";

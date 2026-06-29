@@ -2,10 +2,9 @@ import { useState, useEffect } from "react";
 import { motion } from "framer-motion";
 import { Calendar, Clock, AlertTriangle, CheckCircle2, Info } from "lucide-react";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Spinner } from "@/components/ui/Spinner";
 import { getPlanner } from "@/api/chat";
-import type { PlannerMonth, PlannerAction } from "@/types";
+import type { PlannerMonth } from "@/types";
 
 const priorityConfig = {
   high: {
@@ -75,10 +74,8 @@ export function PlannerPage() {
       try {
         const data = await getPlanner();
         setMonths(data.months);
-      } catch (err: any) {
-        setError(
-          err?.response?.data?.detail || "Failed to generate tax planner"
-        );
+      } catch {
+        setError("Failed to generate tax planner");
       } finally {
         setLoading(false);
       }

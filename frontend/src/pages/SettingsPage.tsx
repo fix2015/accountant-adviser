@@ -40,8 +40,7 @@ export function SettingsPage() {
     setDeleting(true);
     try {
       await deleteMyAccount();
-      localStorage.removeItem("access_token");
-      localStorage.removeItem("refresh_token");
+      await logout();
       navigate("/");
     } catch {
       setDeleting(false);
