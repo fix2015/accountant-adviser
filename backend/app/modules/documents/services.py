@@ -16,9 +16,10 @@ ALLOWED_FILE_TYPES = {
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": "docx",
     "application/msword": "doc",
     "text/plain": "txt",
+    "text/csv": "csv",
 }
 
-ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt"}
+ALLOWED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "csv"}
 
 
 def get_s3_client():
@@ -71,12 +72,17 @@ def extract_text_from_txt(file_content: bytes) -> str:
     return file_content.decode("utf-8", errors="replace")
 
 
+def extract_text_from_csv(file_content: bytes) -> str:
+    return file_content.decode("utf-8", errors="replace")
+
+
 def extract_text(file_content: bytes, file_type: str) -> str:
     extractors = {
         "pdf": extract_text_from_pdf,
         "docx": extract_text_from_docx,
         "doc": extract_text_from_docx,
         "txt": extract_text_from_txt,
+        "csv": extract_text_from_csv,
     }
     extractor = extractors.get(file_type)
     if not extractor:

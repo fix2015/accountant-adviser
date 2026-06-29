@@ -137,3 +137,30 @@ export interface HealthScoreResponse {
   compliance_risk: number;
   recommendations: string[];
 }
+
+export interface ScenarioRequest {
+  revenue: number;
+  expenses: number;
+  employees: number;
+  salary: number;
+  dividends: number;
+  pension_contribution: number;
+}
+
+export interface ScenarioResponse {
+  income_tax: number;
+  national_insurance: number;
+  corporation_tax: number;
+  dividend_tax: number;
+  total_tax: number;
+  take_home: number;
+  effective_rate: number;
+  suggestions: string[];
+}
+
+export interface ZipUploadResult {
+  processed: number;
+  skipped: number;
+  errors: number;
+  files: { filename: string; status: string }[];
+}

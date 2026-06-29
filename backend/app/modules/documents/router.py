@@ -87,6 +87,139 @@ async def upload_document(
     )
 
 
+@router.post("/upload-zip")
+async def upload_zip(
+    file: UploadFile = File(...),
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Upload a .zip archive and process all supported files inside it."""
+    import zipfile
+    import io
+    import os
+
+    if not file.filename or not file.filename.lower().endswith(".zip"):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Only .zip files are accepted",
+        )
+
+    zip_content = await file.read()
+    zip_size = len(zip_content)
+
+    MAX_ZIP_SIZE = 100 * 1024 * 1024  # 100MB
+    if zip_size > MAX_ZIP_SIZE:
+        raise HTTPException(
+            status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+            detail="ZIP file exceeds 100MB limit",
+        )
+
+    try:
+        zf = zipfile.ZipFile(io.BytesIO(zip_content))
+    except zipfile.BadZipFile:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or corrupted ZIP file",
+        )
+
+    SUPPORTED_EXTENSIONS = {"pdf", "docx", "doc", "txt", "csv"}
+    MAX_FILES = 50
+    MAX_INDIVIDUAL_SIZE = 10 * 1024 * 1024  # 10MB
+    MAX_DEPTH = 3
+    SKIP_PREFIXES = ("__MACOSX", ".DS_Store")
+
+    results = []
+    processed = 0
+    skipped = 0
+    errors = 0
+
+    entries = [info for info in zf.infolist() if not info.is_dir()]
+
+    for info in entries:
+        name = info.filename
+        basename = os.path.basename(name)
+
+        # Skip hidden files and macOS artifacts
+        if basename.startswith(".") or any(
+            name.startswith(p) or ("/" + p) in name for p in SKIP_PREFIXES
+        ):
+            skipped += 1
+            results.append({"filename": basename, "status": "skipped"})
+            continue
+
+        # Check depth
+        depth = name.count("/")
+        if depth > MAX_DEPTH:
+            skipped += 1
+            results.append({"filename": basename, "status": "skipped"})
+            continue
+
+        # Check extension
+        ext = basename.rsplit(".", 1)[-1].lower() if "." in basename else ""
+        if ext not in SUPPORTED_EXTENSIONS:
+            skipped += 1
+            results.append({"filename": basename, "status": "skipped"})
+            continue
+
+        # Check individual file size
+        if info.file_size > MAX_INDIVIDUAL_SIZE:
+            skipped += 1
+            results.append({"filename": basename, "status": "skipped"})
+            continue
+
+        # Check max files
+        if processed >= MAX_FILES:
+            skipped += 1
+            results.append({"filename": basename, "status": "skipped"})
+            continue
+
+        try:
+            file_content = zf.read(info.filename)
+
+            # Map extension to content type
+            content_type_map = {
+                "pdf": "application/pdf",
+                "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                "doc": "application/msword",
+                "txt": "text/plain",
+                "csv": "text/csv",
+            }
+            content_type = content_type_map.get(ext, "application/octet-stream")
+
+            document = services.create_document(
+                db=db,
+                consultation_id=consultation.id,
+                user_id=current_user.id,
+                filename=basename,
+                file_content=file_content,
+                content_type=content_type,
+                file_size=len(file_content),
+            )
+
+            services.process_document_inline(db, document, file_content)
+
+            if document.extracted_text:
+                from app.modules.knowledge.services import build_knowledge_from_document
+
+                build_knowledge_from_document(db, document)
+
+            processed += 1
+            results.append({"filename": basename, "status": "processed"})
+        except Exception as e:
+            errors += 1
+            results.append({"filename": basename, "status": f"error: {str(e)}"})
+
+    zf.close()
+
+    return {
+        "processed": processed,
+        "skipped": skipped,
+        "errors": errors,
+        "files": results,
+    }
+
+
 @router.get("/", response_model=DocumentListResponse)
 def list_documents(
     skip: int = 0,

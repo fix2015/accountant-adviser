@@ -17,6 +17,7 @@ import { KnowledgeGraph } from "@/components/knowledge/KnowledgeGraph";
 import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
 import { ProgressTracker } from "@/components/dashboard/ProgressTracker";
 import { HealthScore } from "@/components/dashboard/HealthScore";
+import { TaxComparison } from "@/components/dashboard/TaxComparison";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
@@ -302,6 +303,9 @@ export function DashboardPage() {
           </Card>
         </motion.div>
       </div>
+
+      {/* Tax Comparison (shown after user has asked questions) */}
+      {questionsUsed > 0 && <TaxComparison />}
 
       {/* Quick actions */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">

@@ -16,6 +16,8 @@ from app.modules.chat.schemas import (
     MessageListResponse,
     StrategyReportRequest,
     HealthScoreResponse,
+    ScenarioRequest,
+    ScenarioResponse,
 )
 from app.modules.chat import services
 
@@ -183,6 +185,22 @@ def get_suggestions(
             seen.add(s)
             unique.append(s)
     return {"suggestions": unique[:6]}
+
+
+@router.post("/scenario", response_model=ScenarioResponse)
+def calculate_scenario(
+    data: ScenarioRequest,
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Run a 'What If' tax scenario calculation. Does NOT count as a question."""
+    result = services.generate_scenario(
+        db=db,
+        consultation_id=consultation.id,
+        scenario_data=data.model_dump(),
+    )
+    return ScenarioResponse(**result)
 
 
 @router.get("/health-score", response_model=HealthScoreResponse)

@@ -1,5 +1,5 @@
 import client from "./client";
-import type { Document } from "@/types";
+import type { Document, ZipUploadResult } from "@/types";
 
 export async function uploadDocument(file: File): Promise<Document> {
   const formData = new FormData();
@@ -21,5 +21,15 @@ export async function deleteDocument(id: number): Promise<void> {
 
 export async function getDocumentSummary(id: string): Promise<{ summary: string }> {
   const response = await client.get(`/documents/${id}/summary`);
+  return response.data;
+}
+
+export async function uploadZip(file: File): Promise<ZipUploadResult> {
+  const formData = new FormData();
+  formData.append("file", file);
+  const response = await client.post<ZipUploadResult>("/documents/upload-zip", formData, {
+    headers: { "Content-Type": "multipart/form-data" },
+    timeout: 120000,
+  });
   return response.data;
 }

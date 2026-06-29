@@ -11,12 +11,14 @@ import {
   Download,
   Brain,
   LogOut,
+  Calculator,
 } from "lucide-react";
 
 const sidebarLinks = [
   { to: "/dashboard", icon: LayoutDashboard, label: "Overview", end: true },
   { to: "/dashboard/chat", icon: MessageSquare, label: "AI Chat", end: false },
   { to: "/dashboard/documents", icon: FileText, label: "Documents", end: false },
+  { to: "/dashboard/scenarios", icon: Calculator, label: "Scenarios", end: false },
   { to: "/dashboard/strategy", icon: Download, label: "Strategy", end: false },
 ];
 

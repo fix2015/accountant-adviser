@@ -41,3 +41,23 @@ class HealthScoreResponse(BaseModel):
     expense_optimization: int
     compliance_risk: int
     recommendations: list[str]
+
+
+class ScenarioRequest(BaseModel):
+    revenue: int = 50000
+    expenses: int = 15000
+    employees: int = 0
+    salary: int = 12570
+    dividends: int = 0
+    pension_contribution: int = 0
+
+
+class ScenarioResponse(BaseModel):
+    income_tax: int
+    national_insurance: int
+    corporation_tax: int
+    dividend_tax: int
+    total_tax: int
+    take_home: int
+    effective_rate: float
+    suggestions: list[str]

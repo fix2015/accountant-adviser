@@ -9,7 +9,7 @@ import { createCheckout } from "@/api/payments";
 import { Sparkles, Zap, FileText, MessageSquare, Download } from "lucide-react";
 
 export function DocumentsPage() {
-  const { documents, isLoading, upload, isUploading, remove, isDeleting } = useDocuments();
+  const { documents, isLoading, upload, isUploading, uploadZip: uploadZipFn, isUploadingZip, remove, isDeleting } = useDocuments();
   const { toast } = useToast();
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isUpgrading, setIsUpgrading] = useState(false);
@@ -27,6 +27,16 @@ export function DocumentsPage() {
 
   const handleUpload = async (file: File) => {
     try {
+      // Detect ZIP files and use the zip upload endpoint
+      if (file.name.toLowerCase().endsWith(".zip")) {
+        const result = await uploadZipFn(file);
+        toast(
+          "success",
+          `Processed ${result.processed} file${result.processed !== 1 ? "s" : ""} from archive${result.skipped > 0 ? `, skipped ${result.skipped}` : ""}${result.errors > 0 ? `, ${result.errors} error${result.errors !== 1 ? "s" : ""}` : ""}`
+        );
+        return;
+      }
+
       await upload(file);
       toast("success", `${file.name} uploaded successfully`);
     } catch (err: unknown) {
@@ -60,7 +70,7 @@ export function DocumentsPage() {
         </p>
       </div>
 
-      <FileUpload onUpload={handleUpload} isUploading={isUploading} />
+      <FileUpload onUpload={handleUpload} isUploading={isUploading || isUploadingZip} />
 
       <div>
         <h2 className="text-lg font-semibold text-ds-text-primary mb-4">

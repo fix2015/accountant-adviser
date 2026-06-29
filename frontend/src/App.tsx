@@ -18,6 +18,7 @@ import { PrivacyPage } from "@/pages/PrivacyPage";
 import { NotFoundPage } from "@/pages/NotFoundPage";
 import { ForgotPasswordPage } from "@/pages/ForgotPasswordPage";
 import { ResetPasswordPage } from "@/pages/ResetPasswordPage";
+import { ScenariosPage } from "@/pages/ScenariosPage";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -51,6 +52,7 @@ export default function App() {
                 <Route index element={<DashboardPage />} />
                 <Route path="chat" element={<ChatPage />} />
                 <Route path="documents" element={<DocumentsPage />} />
+                <Route path="scenarios" element={<ScenariosPage />} />
                 <Route path="strategy" element={<StrategyPage />} />
               </Route>
 

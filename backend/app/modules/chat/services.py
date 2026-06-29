@@ -258,6 +258,69 @@ def generate_health_score(db: Session, consultation_id: int) -> dict:
     return data
 
 
+def generate_scenario(db: Session, consultation_id: int, scenario_data: dict) -> dict:
+    """Call OpenAI with a structured scenario prompt and return parsed tax calculations."""
+    import json as _json
+
+    prompt = (
+        "Given this business scenario, calculate the exact tax position for UK 2025/26:\n"
+        f"Revenue: \u00a3{scenario_data['revenue']}, "
+        f"Expenses: \u00a3{scenario_data['expenses']}, "
+        f"Employees: {scenario_data['employees']}, "
+        f"Director salary: \u00a3{scenario_data['salary']}, "
+        f"Dividends: \u00a3{scenario_data['dividends']}, "
+        f"Pension: \u00a3{scenario_data['pension_contribution']}\n\n"
+        'Return ONLY valid JSON: {"income_tax": X, "national_insurance": X, '
+        '"corporation_tax": X, "dividend_tax": X, "total_tax": X, "take_home": X, '
+        '"effective_rate": X, "suggestions": ["...", "..."]}'
+    )
+
+    client = get_openai_client()
+    response = client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=800,
+        temperature=0.3,
+    )
+
+    raw = response.choices[0].message.content.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+    try:
+        data = _json.loads(raw)
+    except _json.JSONDecodeError:
+        data = {
+            "income_tax": 0,
+            "national_insurance": 0,
+            "corporation_tax": 0,
+            "dividend_tax": 0,
+            "total_tax": 0,
+            "take_home": 0,
+            "effective_rate": 0.0,
+            "suggestions": ["Unable to parse the AI response — please try again"],
+        }
+
+    # Ensure all numeric fields are ints except effective_rate
+    for key in (
+        "income_tax",
+        "national_insurance",
+        "corporation_tax",
+        "dividend_tax",
+        "total_tax",
+        "take_home",
+    ):
+        data[key] = int(data.get(key, 0))
+    data["effective_rate"] = float(data.get("effective_rate", 0.0))
+    if not isinstance(data.get("suggestions"), list):
+        data["suggestions"] = []
+    data["suggestions"] = [str(s) for s in data["suggestions"][:10]]
+
+    return data
+
+
 def get_consultation_messages(
     db: Session, consultation_id: int, skip: int = 0, limit: int = 100
 ) -> tuple[list[Message], int]:
