@@ -129,3 +129,11 @@ export interface AdminPayment {
   created_at: string;
   type: "consultation" | "extra_questions";
 }
+
+export interface HealthScoreResponse {
+  overall: number;
+  tax_efficiency: number;
+  expense_optimization: number;
+  compliance_risk: number;
+  recommendations: string[];
+}

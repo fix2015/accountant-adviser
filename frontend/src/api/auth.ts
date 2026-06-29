@@ -35,3 +35,13 @@ export async function updateBusinessInfo(data: BusinessInfoData): Promise<User> 
   const response = await client.patch<User>("/users/me/business", data);
   return response.data;
 }
+
+export async function forgotPassword(email: string): Promise<{ message: string; token?: string }> {
+  const response = await client.post<{ message: string; token?: string }>("/auth/forgot-password", { email });
+  return response.data;
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<{ message: string }> {
+  const response = await client.post<{ message: string }>("/auth/reset-password", { token, new_password: newPassword });
+  return response.data;
+}

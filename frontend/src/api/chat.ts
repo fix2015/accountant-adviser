@@ -1,5 +1,5 @@
 import client from "./client";
-import type { ChatMessage, ChatSession } from "@/types";
+import type { ChatMessage, ChatSession, HealthScoreResponse } from "@/types";
 
 export async function getChatSession(): Promise<ChatSession> {
   const response = await client.get<ChatSession>("/chat/session");
@@ -18,6 +18,11 @@ export async function getChatHistory(): Promise<ChatMessage[]> {
 
 export async function sendMessage(content: string): Promise<ChatMessage> {
   const response = await client.post<ChatMessage>("/chat/send", { message: content });
+  return response.data;
+}
+
+export async function getHealthScore(): Promise<HealthScoreResponse> {
+  const response = await client.get("/chat/health-score");
   return response.data;
 }
 

@@ -182,6 +182,82 @@ def chat_completion_stream(
     save_message(db, consultation_id, user_id, MessageRole.ASSISTANT, full_response)
 
 
+def generate_health_score(db: Session, consultation_id: int) -> dict:
+    """Analyze the knowledge base and generate a business health score."""
+    knowledge_base = get_knowledge_base_text(db, consultation_id)
+
+    # If no documents uploaded, return defaults
+    if "No documents" in knowledge_base:
+        return {
+            "overall": 50,
+            "tax_efficiency": 50,
+            "expense_optimization": 50,
+            "compliance_risk": 50,
+            "recommendations": [
+                "Upload your financial documents so we can analyse your tax position",
+                "Include your latest tax return for a more accurate score",
+                "Add bank statements and expense receipts for a complete picture",
+            ],
+        }
+
+    prompt = (
+        "Analyze this business's financial health based on the knowledge base below. "
+        "Return ONLY valid JSON with no markdown formatting, no code fences, no explanation.\n\n"
+        '{"overall": <0-100>, "tax_efficiency": <0-100>, "expense_optimization": <0-100>, '
+        '"compliance_risk": <0-100>, "recommendations": ["recommendation 1", "recommendation 2", "recommendation 3"]}\n\n'
+        "Scoring guide:\n"
+        "- tax_efficiency: How well are they minimising tax? 100=optimal structure\n"
+        "- expense_optimization: Are expenses well managed? 100=all legitimate deductions claimed\n"
+        "- compliance_risk: How safe from HMRC issues? 100=fully compliant, 0=high risk\n"
+        "- overall: weighted average of the three scores\n\n"
+        "Knowledge base:\n" + knowledge_base
+    )
+
+    client = get_openai_client()
+    response = client.chat.completions.create(
+        model=settings.OPENAI_MODEL,
+        messages=[{"role": "user", "content": prompt}],
+        max_tokens=500,
+        temperature=0.4,
+    )
+
+    raw = response.choices[0].message.content.strip()
+    # Strip markdown code fences if present
+    if raw.startswith("```"):
+        raw = re.sub(r"^```(?:json)?\s*", "", raw)
+        raw = re.sub(r"\s*```$", "", raw)
+
+    import json as _json
+
+    try:
+        data = _json.loads(raw)
+    except _json.JSONDecodeError:
+        data = {
+            "overall": 50,
+            "tax_efficiency": 50,
+            "expense_optimization": 50,
+            "compliance_risk": 50,
+            "recommendations": [
+                "Unable to parse the AI response — please try again",
+                "Upload additional documents for a more accurate score",
+                "Try refreshing after adding more financial records",
+            ],
+        }
+
+    # Clamp scores to 0-100
+    for key in ("overall", "tax_efficiency", "expense_optimization", "compliance_risk"):
+        val = data.get(key, 50)
+        data[key] = max(0, min(100, int(val)))
+
+    # Ensure recommendations is a list of strings
+    recs = data.get("recommendations", [])
+    if not isinstance(recs, list):
+        recs = []
+    data["recommendations"] = [str(r) for r in recs[:5]]
+
+    return data
+
+
 def get_consultation_messages(
     db: Session, consultation_id: int, skip: int = 0, limit: int = 100
 ) -> tuple[list[Message], int]:

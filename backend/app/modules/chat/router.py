@@ -15,6 +15,7 @@ from app.modules.chat.schemas import (
     ChatResponse,
     MessageListResponse,
     StrategyReportRequest,
+    HealthScoreResponse,
 )
 from app.modules.chat import services
 
@@ -182,6 +183,16 @@ def get_suggestions(
             seen.add(s)
             unique.append(s)
     return {"suggestions": unique[:6]}
+
+
+@router.get("/health-score", response_model=HealthScoreResponse)
+def get_health_score(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Analyze the knowledge base and return a business health score."""
+    return services.generate_health_score(db, consultation.id)
 
 
 @router.post("/report")

@@ -16,6 +16,7 @@ import { useDocuments } from "@/hooks/useDocuments";
 import { KnowledgeGraph } from "@/components/knowledge/KnowledgeGraph";
 import { KnowledgePanel } from "@/components/knowledge/KnowledgePanel";
 import { ProgressTracker } from "@/components/dashboard/ProgressTracker";
+import { HealthScore } from "@/components/dashboard/HealthScore";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { QuestionCounter } from "@/components/chat/QuestionCounter";
@@ -248,6 +249,9 @@ export function DashboardPage() {
         questionsLimit={questionsLimit}
         hasDownloadedReport={localStorage.getItem("report_downloaded") === "true"}
       />
+
+      {/* Business Health Score */}
+      <HealthScore />
 
       {/* Welcome header */}
       <div>

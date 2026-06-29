@@ -1,25 +1,23 @@
 import { useState } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { Link } from "react-router-dom";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { motion } from "framer-motion";
-import { Brain, Mail, Lock } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
+import { Brain, Mail } from "lucide-react";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { forgotPassword } from "@/api/auth";
 
 const schema = z.object({
   email: z.string().email("Please enter a valid email"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
 });
 
 type FormData = z.infer<typeof schema>;
 
-export function LoginPage() {
-  const navigate = useNavigate();
-  const { login } = useAuth();
+export function ForgotPasswordPage() {
   const [error, setError] = useState("");
+  const [success, setSuccess] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
 
   const {
@@ -34,10 +32,10 @@ export function LoginPage() {
     setError("");
     setIsLoading(true);
     try {
-      await login(data.email, data.password);
-      navigate("/dashboard");
+      await forgotPassword(data.email);
+      setSuccess(true);
     } catch (err: unknown) {
-      let message = "Invalid credentials. Please try again.";
+      let message = "Something went wrong. Please try again.";
       if (err && typeof err === "object" && "response" in err) {
         const axiosErr = err as { response?: { data?: { detail?: string } } };
         message = axiosErr.response?.data?.detail || message;
@@ -70,8 +68,10 @@ export function LoginPage() {
             <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-gradient-to-br from-ds-accent-primary to-ds-accent-secondary shadow-lg mb-4">
               <Brain className="h-6 w-6 text-white" />
             </div>
-            <h1 className="text-2xl font-bold text-ds-text-primary">Welcome Back</h1>
-            <p className="mt-1 text-sm text-ds-text-secondary">Sign in to your account</p>
+            <h1 className="text-2xl font-bold text-ds-text-primary">Forgot Password</h1>
+            <p className="mt-1 text-sm text-ds-text-secondary">
+              Enter your email and we'll send you reset instructions
+            </p>
           </div>
 
           {error && (
@@ -80,51 +80,49 @@ export function LoginPage() {
             </div>
           )}
 
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
-            <Input
-              label="Email"
-              type="email"
-              placeholder="you@company.co.uk"
-              leftIcon={<Mail className="h-4 w-4" />}
-              error={errors.email?.message}
-              {...register("email")}
-            />
-
-            <Input
-              label="Password"
-              type="password"
-              placeholder="Enter your password"
-              leftIcon={<Lock className="h-4 w-4" />}
-              error={errors.password?.message}
-              {...register("password")}
-            />
-
-            <div className="flex justify-end">
+          {success ? (
+            <div className="text-center">
+              <div className="mb-6 rounded-xl border border-ds-feedback-success/30 bg-ds-feedback-success/10 px-4 py-3 text-sm text-ds-feedback-success">
+                Check your email for reset instructions.
+              </div>
               <Link
-                to="/forgot-password"
-                className="text-xs text-ds-text-accent hover:underline"
+                to="/login"
+                className="text-ds-text-accent hover:underline font-medium text-sm"
               >
-                Forgot password?
+                Back to Sign In
               </Link>
             </div>
+          ) : (
+            <>
+              <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                <Input
+                  label="Email"
+                  type="email"
+                  placeholder="you@company.co.uk"
+                  leftIcon={<Mail className="h-4 w-4" />}
+                  error={errors.email?.message}
+                  {...register("email")}
+                />
 
-            <Button
-              type="submit"
-              variant="glow"
-              size="lg"
-              className="w-full"
-              isLoading={isLoading}
-            >
-              Sign In
-            </Button>
-          </form>
+                <Button
+                  type="submit"
+                  variant="glow"
+                  size="lg"
+                  className="w-full"
+                  isLoading={isLoading}
+                >
+                  Send Reset Link
+                </Button>
+              </form>
 
-          <p className="mt-6 text-center text-sm text-ds-text-secondary">
-            Don't have an account?{" "}
-            <Link to="/register" className="text-ds-text-accent hover:underline font-medium">
-              Get Started
-            </Link>
-          </p>
+              <p className="mt-6 text-center text-sm text-ds-text-secondary">
+                Remember your password?{" "}
+                <Link to="/login" className="text-ds-text-accent hover:underline font-medium">
+                  Sign In
+                </Link>
+              </p>
+            </>
+          )}
         </div>
       </motion.div>
     </div>

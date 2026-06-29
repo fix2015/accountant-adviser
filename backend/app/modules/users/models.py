@@ -32,3 +32,7 @@ class User(Base):
     )  # 0-25k, 25k-50k, 50k-100k, 100k-250k, 250k-500k, 500k+
     employee_count = Column(Integer, nullable=True, default=0)
     onboarding_completed = Column(Boolean, default=False, nullable=False)
+
+    # Password reset fields
+    password_reset_token = Column(String(255), nullable=True)
+    password_reset_expires = Column(DateTime, nullable=True)

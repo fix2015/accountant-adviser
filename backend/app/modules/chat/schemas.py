@@ -33,3 +33,11 @@ class MessageListResponse(BaseModel):
 
 class StrategyReportRequest(BaseModel):
     title: str = "Tax Optimization Strategy Report"
+
+
+class HealthScoreResponse(BaseModel):
+    overall: int
+    tax_efficiency: int
+    expense_optimization: int
+    compliance_risk: int
+    recommendations: list[str]

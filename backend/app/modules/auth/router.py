@@ -7,6 +7,8 @@ from app.modules.auth.schemas import (
     LoginRequest,
     TokenResponse,
     RefreshRequest,
+    ForgotPasswordRequest,
+    ResetPasswordRequest,
 )
 from app.modules.auth import services as auth_services
 from app.modules.users import services as user_services
@@ -114,3 +116,31 @@ def refresh_token(data: RefreshRequest, db: Session = Depends(get_db)):
 def logout(data: RefreshRequest, db: Session = Depends(get_db)):
     auth_services.revoke_refresh_token(db, data.refresh_token)
     return None
+
+
+@router.post("/forgot-password")
+def forgot_password(data: ForgotPasswordRequest, db: Session = Depends(get_db)):
+    token = auth_services.create_password_reset_token(db, data.email)
+    response = {
+        "message": "If an account with that email exists, a reset link has been sent."
+    }
+    # Include token in response for development (no SMTP configured yet)
+    if token:
+        response["token"] = token
+    return response
+
+
+@router.post("/reset-password")
+def reset_password(data: ResetPasswordRequest, db: Session = Depends(get_db)):
+    if len(data.new_password) < 8:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail="Password must be at least 8 characters",
+        )
+    success = auth_services.reset_password(db, data.token, data.new_password)
+    if not success:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Invalid or expired reset token",
+        )
+    return {"message": "Password has been reset successfully."}

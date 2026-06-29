@@ -65,3 +65,36 @@ def revoke_all_user_tokens(db: Session, user_id: int) -> None:
         RefreshToken.is_revoked.is_(False),
     ).update({"is_revoked": True})
     db.commit()
+
+
+def create_password_reset_token(db: Session, email: str) -> str | None:
+    from app.modules.users import services as user_services
+
+    user = user_services.get_user_by_email(db, email)
+    if not user:
+        return None
+    token = str(uuid.uuid4())
+    user.password_reset_token = token
+    user.password_reset_expires = datetime.utcnow() + timedelta(hours=1)
+    db.commit()
+    return token
+
+
+def reset_password(db: Session, token: str, new_password: str) -> bool:
+    from app.modules.users import services as user_services
+
+    user = (
+        db.query(User)
+        .filter(
+            User.password_reset_token == token,
+            User.password_reset_expires > datetime.utcnow(),
+        )
+        .first()
+    )
+    if not user:
+        return False
+    user.hashed_password = user_services.hash_password(new_password)
+    user.password_reset_token = None
+    user.password_reset_expires = None
+    db.commit()
+    return True
