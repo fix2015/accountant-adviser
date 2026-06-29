@@ -1004,15 +1004,62 @@ def generate_strategy_report_pdf(
             spaceAfter=4 * mm,
         )
     )
-    elements.append(
-        Paragraph(
-            "This report summarises the AI-generated tax optimisation strategies "
-            "based on your uploaded financial documents and consultation Q&amp;A sessions. "
-            "The strategies below were tailored to your specific financial situation "
-            "using current UK tax regulations and rates.",
-            s["body"],
+
+    # Generate AI summary of the entire consultation
+    ai_summary = ""
+    if messages:
+        try:
+            all_advice = "\n".join(m.content[:1500] for m in messages[:5])
+            client = get_openai_client()
+            summary_resp = client.chat.completions.create(
+                model=settings.OPENAI_MODEL,
+                messages=[
+                    {
+                        "role": "system",
+                        "content": (
+                            "You are writing the executive summary for a professional tax strategy report. "
+                            "Write a clear, concise 4-6 sentence summary of the key findings and recommendations. "
+                            "Include specific £ amounts and percentages where possible. "
+                            "Write in third person professional tone. No markdown, just plain text."
+                        ),
+                    },
+                    {
+                        "role": "user",
+                        "content": f"Summarise these tax consultation findings:\n\n{all_advice}",
+                    },
+                ],
+                max_tokens=400,
+                temperature=0.3,
+            )
+            ai_summary = summary_resp.choices[0].message.content.strip()
+        except Exception:
+            ai_summary = ""
+
+    if ai_summary:
+        # Highlighted summary box
+        summary_box_style = ParagraphStyle(
+            "SummaryBox",
+            parent=s["body"],
+            fontSize=10,
+            leading=16,
+            textColor=navy,
+            backColor=HexColor("#eef2f8"),
+            borderColor=accent,
+            borderWidth=1,
+            borderPadding=12,
+            spaceAfter=6 * mm,
         )
-    )
+        elements.append(Paragraph(_escape(ai_summary), summary_box_style))
+    else:
+        elements.append(
+            Paragraph(
+                "This report summarises the AI-generated tax optimisation strategies "
+                "based on your uploaded financial documents and consultation Q&amp;A sessions. "
+                "The strategies below were tailored to your specific financial situation "
+                "using current UK tax regulations and rates.",
+                s["body"],
+            )
+        )
 
     # Summary stats table
     summary_data = [
