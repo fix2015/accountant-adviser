@@ -24,6 +24,14 @@ export async function verifyPayment(sessionId: string): Promise<{ status: string
   return response.data;
 }
 
+export async function createSubscription(): Promise<string> {
+  const response = await client.post("/payments/subscribe", {
+    success_url: `${window.location.origin}/dashboard?payment=success`,
+    cancel_url: `${window.location.origin}/dashboard?payment=cancelled`,
+  });
+  return response.data.checkout_url;
+}
+
 export async function getActiveConsultation(): Promise<ConsultationInfo> {
   const response = await client.get<ConsultationInfo>("/payments/consultation/active");
   return response.data;

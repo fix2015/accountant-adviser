@@ -31,6 +31,11 @@ export async function calculateScenario(data: ScenarioRequest): Promise<Scenario
   return response.data;
 }
 
+export async function finishConsultation(): Promise<{ message: string }> {
+  const response = await client.post("/chat/finish");
+  return response.data;
+}
+
 export function streamMessage(
   content: string,
   onChunk: (text: string) => void,

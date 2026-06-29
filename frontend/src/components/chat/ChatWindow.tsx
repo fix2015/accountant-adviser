@@ -5,9 +5,10 @@ import { ChatInput } from "./ChatInput";
 import { QuestionCounter } from "./QuestionCounter";
 import { useChat } from "@/hooks/useChat";
 import { Button } from "@/components/ui/Button";
-import { Bot, Sparkles, Zap } from "lucide-react";
+import { Bot, Sparkles, Zap, CheckCircle } from "lucide-react";
 import { getActiveConsultation } from "@/api/payments";
-import { getChatSuggestions } from "@/api/chat";
+import { getChatSuggestions, finishConsultation } from "@/api/chat";
+import { useToast } from "@/components/ui/Toast";
 import type { ConsultationInfo } from "@/types";
 
 export function ChatWindow() {
@@ -15,6 +16,8 @@ export function ChatWindow() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const [consultation, setConsultation] = useState<ConsultationInfo | null>(null);
   const [suggestions, setSuggestions] = useState<string[]>([]);
+  const [isFinishing, setIsFinishing] = useState(false);
+  const { toast } = useToast();
 
   const questionsUsed = consultation?.questions_used ?? 0;
   const questionsTotal = consultation?.questions_limit ?? 0;
@@ -57,6 +60,23 @@ export function ChatWindow() {
     sendMessage(content);
   };
 
+  const handleFinish = async () => {
+    if (isFinishing) return;
+    setIsFinishing(true);
+    try {
+      const result = await finishConsultation();
+      toast("success", result.message);
+      // Refresh consultation status
+      getActiveConsultation()
+        .then(setConsultation)
+        .catch(() => setConsultation(null));
+    } catch {
+      toast("error", "Failed to finish consultation. Please try again.");
+    } finally {
+      setIsFinishing(false);
+    }
+  };
+
   return (
     <div className="flex h-full flex-col">
       {/* Header */}
@@ -73,7 +93,21 @@ export function ChatWindow() {
             </p>
           </div>
         </div>
-        <QuestionCounter used={questionsUsed} total={questionsTotal} className="w-48" />
+        <div className="flex items-center gap-3">
+          <QuestionCounter used={questionsUsed} total={questionsTotal} className="w-48" />
+          {messages.length > 0 && !isOutOfQuestions && (
+            <Button
+              variant="secondary"
+              size="sm"
+              onClick={handleFinish}
+              disabled={isFinishing || isStreaming}
+              className="flex items-center gap-1.5 text-xs"
+            >
+              <CheckCircle className="h-3.5 w-3.5" />
+              {isFinishing ? "Finishing..." : "Finish"}
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Messages */}

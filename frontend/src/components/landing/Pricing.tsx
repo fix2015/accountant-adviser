@@ -1,7 +1,14 @@
 import { motion } from "framer-motion";
 import { Link } from "react-router-dom";
-import { Check, Zap, Star } from "lucide-react";
+import { Check, Zap, Star, RefreshCw } from "lucide-react";
 import { Button } from "@/components/ui/Button";
+
+const freeFeatures = [
+  "3 AI tax questions",
+  "Upload 1 document",
+  "Basic tax insights",
+  "No credit card required",
+];
 
 const mainFeatures = [
   "Full AI tax consultation",
@@ -13,17 +20,19 @@ const mainFeatures = [
   "Data encrypted & secure",
 ];
 
-const extraFeatures = [
-  "50 additional questions",
-  "Continued AI conversation",
-  "Updated strategy insights",
-  "Same session, deeper analysis",
+const subscriptionFeatures = [
+  "20 questions per month",
+  "Ongoing AI access",
+  "Upload unlimited documents",
+  "Monthly strategy updates",
+  "Knowledge graph access",
+  "Cancel anytime",
 ];
 
 export function Pricing() {
   return (
     <section id="pricing" className="relative py-24">
-      <div className="mx-auto max-w-5xl px-4 sm:px-6 lg:px-8">
+      <div className="mx-auto max-w-6xl px-4 sm:px-6 lg:px-8">
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           whileInView={{ opacity: 1, y: 0 }}
@@ -34,17 +43,55 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-4 text-lg text-ds-text-secondary max-w-xl mx-auto">
-            Cheaper than 10 minutes with a human accountant. No subscriptions, no hidden fees.
+            Cheaper than 10 minutes with a human accountant. Choose the plan that suits you.
           </p>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8 max-w-4xl mx-auto">
-          {/* Main Plan */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-5xl mx-auto">
+          {/* Free Trial */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.5 }}
+          >
+            <div className="glass rounded-2xl p-8 h-full">
+              <div className="flex items-center gap-2 mb-4">
+                <Zap className="h-5 w-5 text-ds-accent-secondary" />
+                <span className="text-sm font-medium text-ds-accent-secondary">Try Free</span>
+              </div>
+              <h3 className="text-2xl font-bold text-ds-text-primary">Free Trial</h3>
+              <div className="mt-4 flex items-baseline gap-1">
+                <span className="text-5xl font-bold text-ds-text-primary">£0</span>
+                <span className="text-ds-text-muted">forever</span>
+              </div>
+              <p className="mt-3 text-sm text-ds-text-secondary">
+                Try the AI adviser with no commitment. See how it works.
+              </p>
+
+              <ul className="mt-8 space-y-3">
+                {freeFeatures.map((feature) => (
+                  <li key={feature} className="flex items-center gap-3 text-sm text-ds-text-secondary">
+                    <Check className="h-4 w-4 text-ds-accent-secondary flex-shrink-0" />
+                    {feature}
+                  </li>
+                ))}
+              </ul>
+
+              <Link to="/register" className="block mt-8">
+                <Button variant="secondary" size="lg" className="w-full">
+                  Start Free Trial
+                </Button>
+              </Link>
+            </div>
+          </motion.div>
+
+          {/* Full Consultation — Most Popular */}
+          <motion.div
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.5, delay: 0.1 }}
             className="relative"
           >
             <div className="absolute -inset-px rounded-2xl bg-gradient-to-b from-ds-accent-primary/50 to-ds-accent-secondary/50 opacity-70" />
@@ -79,29 +126,29 @@ export function Pricing() {
             </div>
           </motion.div>
 
-          {/* Extra Questions */}
+          {/* Monthly Plan */}
           <motion.div
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
-            transition={{ duration: 0.5, delay: 0.15 }}
+            transition={{ duration: 0.5, delay: 0.2 }}
           >
             <div className="glass rounded-2xl p-8 h-full">
               <div className="flex items-center gap-2 mb-4">
-                <Zap className="h-5 w-5 text-ds-accent-secondary" />
-                <span className="text-sm font-medium text-ds-accent-secondary">Add-on</span>
+                <RefreshCw className="h-5 w-5 text-ds-accent-secondary" />
+                <span className="text-sm font-medium text-ds-accent-secondary">Recurring</span>
               </div>
-              <h3 className="text-2xl font-bold text-ds-text-primary">Extra Questions</h3>
+              <h3 className="text-2xl font-bold text-ds-text-primary">Monthly Plan</h3>
               <div className="mt-4 flex items-baseline gap-1">
-                <span className="text-5xl font-bold text-ds-text-primary">£50</span>
-                <span className="text-ds-text-muted">per 50 questions</span>
+                <span className="text-5xl font-bold text-ds-text-primary">£5</span>
+                <span className="text-ds-text-muted">/month</span>
               </div>
               <p className="mt-3 text-sm text-ds-text-secondary">
-                Need more questions? Continue your consultation with additional queries.
+                Ongoing access with 20 questions per month for continuous advice.
               </p>
 
               <ul className="mt-8 space-y-3">
-                {extraFeatures.map((feature) => (
+                {subscriptionFeatures.map((feature) => (
                   <li key={feature} className="flex items-center gap-3 text-sm text-ds-text-secondary">
                     <Check className="h-4 w-4 text-ds-accent-secondary flex-shrink-0" />
                     {feature}
@@ -109,11 +156,11 @@ export function Pricing() {
                 ))}
               </ul>
 
-              <div className="mt-8">
-                <Button variant="secondary" size="lg" className="w-full" disabled>
-                  Available After Initial Consultation
+              <Link to="/register" className="block mt-8">
+                <Button variant="secondary" size="lg" className="w-full">
+                  Subscribe Monthly
                 </Button>
-              </div>
+              </Link>
             </div>
           </motion.div>
         </div>

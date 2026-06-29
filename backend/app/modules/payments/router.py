@@ -13,6 +13,7 @@ from app.modules.payments.schemas import (
     ConsultationResponse,
     PaymentListResponse,
     ConsultationListResponse,
+    SubscribeRequest,
 )
 from app.modules.payments import services
 
@@ -37,6 +38,21 @@ def create_checkout(
         success_url=data.success_url,
         cancel_url=data.cancel_url,
         consultation_id=data.consultation_id,
+    )
+    return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
+
+
+@router.post("/subscribe", response_model=CheckoutResponse)
+def create_subscription(
+    data: SubscribeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    checkout_url, session_id = services.create_subscription_checkout(
+        db=db,
+        user_id=current_user.id,
+        success_url=data.success_url,
+        cancel_url=data.cancel_url,
     )
     return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
 

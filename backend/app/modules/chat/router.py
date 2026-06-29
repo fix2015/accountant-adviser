@@ -7,9 +7,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import get_current_user, get_active_consultation
 from app.modules.users.models import User
-from app.modules.payments.models import Consultation
+from app.modules.payments.models import Consultation, ConsultationStatus
 from app.modules.payments.services import increment_question_count
-from app.modules.chat.models import MessageRole
+from app.modules.chat.models import Message, MessageRole
 from app.modules.chat.schemas import (
     ChatRequest,
     ChatResponse,
@@ -20,6 +20,7 @@ from app.modules.chat.schemas import (
     ScenarioResponse,
 )
 from app.modules.chat import services
+from app.modules.notifications.email_service import send_consultation_summary
 
 router = APIRouter(prefix="/chat", tags=["chat"])
 
@@ -211,6 +212,79 @@ def get_health_score(
 ):
     """Analyze the knowledge base and return a business health score."""
     return services.generate_health_score(db, consultation.id)
+
+
+@router.post("/finish")
+def finish_consultation(
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Mark consultation as completed and send email summary."""
+    # Get assistant messages to extract strategies
+    assistant_messages = (
+        db.query(Message)
+        .filter(
+            Message.consultation_id == consultation.id,
+            Message.role == MessageRole.ASSISTANT,
+        )
+        .order_by(Message.created_at.asc())
+        .all()
+    )
+
+    # Extract top strategy lines from AI messages
+    strategies = []
+    for msg in assistant_messages:
+        for line in msg.content.split("\n"):
+            stripped = line.strip()
+            # Look for strategy-like lines (numbered items, bold recommendations, etc.)
+            if stripped and any(
+                stripped.startswith(p)
+                for p in [
+                    "Strategy",
+                    "1.",
+                    "2.",
+                    "3.",
+                    "4.",
+                    "5.",
+                    "- **",
+                    "**Recommendation",
+                    "I recommend",
+                    "Based on your situation",
+                ]
+            ):
+                # Clean markdown formatting
+                clean = stripped.replace("**", "").replace("- ", "").strip()
+                if len(clean) > 20 and clean not in strategies:
+                    strategies.append(clean)
+            if len(strategies) >= 5:
+                break
+        if len(strategies) >= 5:
+            break
+
+    # If no strategies found, use generic summary
+    if not strategies:
+        strategies = [
+            "Review your salary and dividend split for optimal tax efficiency",
+            "Ensure all allowable business expenses are claimed",
+            "Consider pension contributions for additional tax relief",
+            "Check your VAT registration threshold status",
+            "Plan ahead for key tax deadlines",
+        ]
+
+    # Mark consultation as completed
+    consultation.status = ConsultationStatus.COMPLETED
+    db.commit()
+
+    # Send email summary
+    user_name = current_user.full_name or current_user.email.split("@")[0]
+    send_consultation_summary(
+        to_email=current_user.email,
+        user_name=user_name,
+        strategies=strategies,
+    )
+
+    return {"message": "Consultation finished. Summary sent to your email."}
 
 
 @router.post("/report")

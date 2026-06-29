@@ -52,3 +52,8 @@ class PaymentListResponse(BaseModel):
 class ConsultationListResponse(BaseModel):
     consultations: list[ConsultationResponse]
     total: int
+
+
+class SubscribeRequest(BaseModel):
+    success_url: str = "http://localhost:5173/dashboard?payment=success"
+    cancel_url: str = "http://localhost:5173/dashboard?payment=cancelled"

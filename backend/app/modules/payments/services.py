@@ -66,6 +66,47 @@ def create_checkout_session(
     return session.url, session.id
 
 
+def create_subscription_checkout(
+    db: Session,
+    user_id: int,
+    success_url: str,
+    cancel_url: str,
+) -> tuple[str, str]:
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "gbp",
+                    "product_data": {"name": "AI Accountant Monthly Plan"},
+                    "unit_amount": 500,  # £5
+                    "recurring": {"interval": "month"},
+                },
+                "quantity": 1,
+            }
+        ],
+        mode="subscription",
+        success_url=success_url
+        + ("&" if "?" in success_url else "?")
+        + "session_id={CHECKOUT_SESSION_ID}",
+        cancel_url=cancel_url,
+        metadata={"user_id": str(user_id), "payment_type": "subscription"},
+    )
+
+    payment = Payment(
+        user_id=user_id,
+        stripe_session_id=session.id,
+        amount=500,
+        currency="gbp",
+        status=PaymentStatus.PENDING,
+        payment_type=PaymentType.SUBSCRIPTION,
+    )
+    db.add(payment)
+    db.commit()
+
+    return session.url, session.id
+
+
 def handle_checkout_completed(db: Session, session: dict) -> None:
     stripe_session_id = session["id"]
     payment = (
@@ -119,6 +160,31 @@ def handle_checkout_completed(db: Session, session: dict) -> None:
                 consultation.questions_limit += 50
                 if consultation.status == ConsultationStatus.COMPLETED:
                     consultation.status = ConsultationStatus.ACTIVE
+    elif payment_type == PaymentType.SUBSCRIPTION.value:
+        # Subscription: 20 questions/month with ongoing access
+        existing_trial = (
+            db.query(Consultation)
+            .filter(
+                Consultation.user_id == user_id,
+                Consultation.is_trial.is_(True),
+                Consultation.status == ConsultationStatus.ACTIVE,
+            )
+            .first()
+        )
+        if existing_trial:
+            existing_trial.is_trial = False
+            existing_trial.payment_id = payment.id
+            existing_trial.questions_limit = 20
+            existing_trial.status = ConsultationStatus.ACTIVE
+        else:
+            consultation = Consultation(
+                user_id=user_id,
+                payment_id=payment.id,
+                status=ConsultationStatus.ACTIVE,
+                questions_used=0,
+                questions_limit=20,
+            )
+            db.add(consultation)
 
     db.commit()
 

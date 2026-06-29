@@ -16,6 +16,7 @@ class PaymentStatus(str, enum.Enum):
 class PaymentType(str, enum.Enum):
     CONSULTATION = "consultation"
     EXTRA_QUESTIONS = "extra_questions"
+    SUBSCRIPTION = "subscription"
 
 
 class ConsultationStatus(str, enum.Enum):
