@@ -82,14 +82,31 @@ def handle_checkout_completed(db: Session, session: dict) -> None:
     user_id = int(metadata.get("user_id", payment.user_id))
 
     if payment_type == PaymentType.CONSULTATION.value:
-        consultation = Consultation(
-            user_id=user_id,
-            payment_id=payment.id,
-            status=ConsultationStatus.ACTIVE,
-            questions_used=0,
-            questions_limit=settings.MAX_FREE_QUESTIONS,
+        # Check if user has an existing trial consultation — upgrade it instead of creating new
+        existing_trial = (
+            db.query(Consultation)
+            .filter(
+                Consultation.user_id == user_id,
+                Consultation.is_trial.is_(True),
+                Consultation.status == ConsultationStatus.ACTIVE,
+            )
+            .first()
         )
-        db.add(consultation)
+        if existing_trial:
+            # Upgrade trial to paid — preserves messages, documents, knowledge
+            existing_trial.is_trial = False
+            existing_trial.payment_id = payment.id
+            existing_trial.questions_limit = settings.MAX_FREE_QUESTIONS
+            existing_trial.status = ConsultationStatus.ACTIVE
+        else:
+            consultation = Consultation(
+                user_id=user_id,
+                payment_id=payment.id,
+                status=ConsultationStatus.ACTIVE,
+                questions_used=0,
+                questions_limit=settings.MAX_FREE_QUESTIONS,
+            )
+            db.add(consultation)
     elif payment_type == PaymentType.EXTRA_QUESTIONS.value:
         consultation_id = metadata.get("consultation_id")
         if consultation_id:
