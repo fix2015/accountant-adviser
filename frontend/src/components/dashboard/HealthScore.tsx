@@ -196,6 +196,21 @@ export function HealthScore() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchScore = useCallback(async (isRefresh = false) => {
+    // Check cache first (1 hour TTL)
+    if (!isRefresh) {
+      try {
+        const cached = localStorage.getItem("health_score_cache");
+        if (cached) {
+          const { data: cachedData, timestamp } = JSON.parse(cached);
+          if (Date.now() - timestamp < 1000 * 60 * 60) {
+            setData(cachedData);
+            setLoading(false);
+            return;
+          }
+        }
+      } catch { /* ignore */ }
+    }
+
     if (isRefresh) setRefreshing(true);
     else setLoading(true);
     setError(null);
@@ -203,6 +218,7 @@ export function HealthScore() {
     try {
       const result = await getHealthScore();
       setData(result);
+      localStorage.setItem("health_score_cache", JSON.stringify({ data: result, timestamp: Date.now() }));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load health score";
       setError(msg);
