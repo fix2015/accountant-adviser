@@ -7,16 +7,23 @@ export function formatCurrency(amount: number): string {
   }).format(amount);
 }
 
+function parseUTC(date: string | Date): Date {
+  if (typeof date === "string" && !date.endsWith("Z") && !date.includes("+")) {
+    return new Date(date + "Z");
+  }
+  return new Date(date);
+}
+
 export function formatDate(date: string | Date): string {
-  return format(new Date(date), "dd MMM yyyy");
+  return format(parseUTC(date), "dd MMM yyyy");
 }
 
 export function formatDateTime(date: string | Date): string {
-  return format(new Date(date), "dd MMM yyyy, HH:mm");
+  return format(parseUTC(date), "dd MMM yyyy, HH:mm");
 }
 
 export function formatRelative(date: string | Date): string {
-  return formatDistanceToNow(new Date(date), { addSuffix: true });
+  return formatDistanceToNow(parseUTC(date), { addSuffix: true });
 }
 
 export function formatPounds(amount: number): string {
