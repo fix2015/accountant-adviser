@@ -1,4 +1,5 @@
 import { motion } from "framer-motion";
+import { useNavigate } from "react-router-dom";
 import { Check, Upload, Brain, MessageSquare, Download } from "lucide-react";
 import { cn } from "@/utils/cn";
 
@@ -15,6 +16,7 @@ interface StepConfig {
   icon: React.ElementType;
   completed: boolean;
   detail?: string;
+  link: string;
 }
 
 export function ProgressTracker({
@@ -24,30 +26,36 @@ export function ProgressTracker({
   questionsLimit,
   hasDownloadedReport,
 }: ProgressTrackerProps) {
+  const navigate = useNavigate();
+
   const steps: StepConfig[] = [
     {
       label: "Upload Documents",
       icon: Upload,
       completed: documentsCount > 0,
       detail: documentsCount > 0 ? `${documentsCount} uploaded` : "No documents yet",
+      link: "/dashboard/documents",
     },
     {
       label: "AI Analysis",
       icon: Brain,
       completed: hasProcessedDocument,
       detail: hasProcessedDocument ? "Analysis complete" : "Pending upload",
+      link: "/dashboard/documents",
     },
     {
       label: "Ask Questions",
       icon: MessageSquare,
       completed: questionsUsed > 0,
       detail: `${questionsUsed}/${questionsLimit} questions`,
+      link: "/dashboard/chat",
     },
     {
       label: "Generate Strategy",
       icon: Download,
       completed: hasDownloadedReport,
       detail: hasDownloadedReport ? "Report ready" : "Available",
+      link: "/dashboard/strategy",
     },
   ];
 
@@ -82,16 +90,19 @@ export function ProgressTracker({
           return (
             <div key={i} className="flex flex-1 items-start">
               {/* Step circle + label */}
-              <div className="flex flex-col items-center text-center w-full">
+              <div
+                className="flex flex-col items-center text-center w-full cursor-pointer group"
+                onClick={() => navigate(step.link)}
+              >
                 <div className="relative">
                   <div
                     className={cn(
-                      "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300",
+                      "flex h-10 w-10 items-center justify-center rounded-full border-2 transition-all duration-300 group-hover:scale-110",
                       isCompleted
                         ? "border-ds-feedback-success bg-ds-feedback-success/15"
                         : isCurrent
                         ? "border-ds-accent-primary bg-ds-accent-primary/10"
-                        : "border-ds-border-default bg-ds-bg-surface"
+                        : "border-ds-border-default bg-ds-bg-surface group-hover:border-ds-border-accent"
                     )}
                   >
                     {isCompleted ? (
