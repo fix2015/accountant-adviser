@@ -68,6 +68,6 @@ app.include_router(knowledge_router, prefix="/api/v1")
 app.include_router(admin_router, prefix="/api/v1")
 
 
-@app.get("/health")
+@app.get("/api/v1/health")
 def health_check():
-    return {"status": "healthy", "version": "1.0.0"}
+    return {"status": "ok", "version": "1.0.0", "platform": "AI Accountant Adviser"}
