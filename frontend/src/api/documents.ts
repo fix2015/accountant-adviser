@@ -34,6 +34,15 @@ export async function getOrganizedDocuments(): Promise<OrganizedDocumentsRespons
   return response.data;
 }
 
+export async function downloadFolder(folderType?: string): Promise<Blob> {
+  const params = folderType ? `?folder_type=${folderType}` : "";
+  const response = await client.get(`/documents/download-folder${params}`, {
+    responseType: "blob",
+    timeout: 120000,
+  });
+  return response.data;
+}
+
 export async function uploadZip(file: File): Promise<ZipUploadResult> {
   const formData = new FormData();
   formData.append("file", file);

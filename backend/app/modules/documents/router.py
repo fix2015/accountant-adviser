@@ -1,4 +1,9 @@
+import io
+import json
+import zipfile
+
 from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, status, Request
+from fastapi.responses import Response
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from sqlalchemy.orm import Session
@@ -15,6 +20,7 @@ from app.modules.documents.schemas import (
     OrganizedDocumentsResponse,
 )
 from app.modules.documents import services
+from app.modules.chat.services import clear_cache
 
 limiter = Limiter(key_func=get_remote_address)
 router = APIRouter(prefix="/documents", tags=["documents"])
@@ -85,6 +91,10 @@ async def upload_document(
         from app.modules.knowledge.services import build_knowledge_from_document
 
         build_knowledge_from_document(db, document)
+
+    # Clear cached AI results since knowledge base changed
+    clear_cache(f"health_score:{consultation.id}")
+    clear_cache(f"planner:{consultation.id}")
 
     return DocumentUploadResponse(
         id=document.id,
@@ -221,12 +231,59 @@ async def upload_zip(
 
     zf.close()
 
+    # Clear cached AI results since knowledge base changed
+    if processed > 0:
+        clear_cache(f"health_score:{consultation.id}")
+        clear_cache(f"planner:{consultation.id}")
+
     return {
         "processed": processed,
         "skipped": skipped,
         "errors": errors,
         "files": results,
     }
+
+
+def _smart_rename(doc) -> str:
+    """Generate a clean filename from document metadata."""
+    ext = doc.filename.rsplit(".", 1)[-1] if "." in doc.filename else "pdf"
+    parts = []
+
+    # Try to extract info from structured_data
+    if doc.structured_data:
+        try:
+            data = json.loads(doc.structured_data)
+            key_data = data.get("key_data", {})
+            if key_data.get("date"):
+                parts.append(key_data["date"])
+            if key_data.get("from"):
+                # Clean company name - take first 20 chars, remove special chars
+                from_name = key_data["from"][:20].strip()
+                from_name = (
+                    "".join(c if c.isalnum() or c in " -" else "" for c in from_name)
+                    .strip()
+                    .replace(" ", "_")
+                )
+                if from_name:
+                    parts.append(from_name)
+            if key_data.get("total_amount"):
+                parts.append(
+                    key_data["total_amount"].replace("\u00a3", "GBP").replace(",", "")
+                )
+        except Exception:
+            pass
+
+    if parts:
+        doc_type = (
+            (doc.document_type or "document")
+            .replace("_", " ")
+            .title()
+            .replace(" ", "_")
+        )
+        return f"{doc_type}_{'_'.join(parts)}.{ext}"
+
+    # Fallback to original filename
+    return doc.filename
 
 
 FOLDER_CONFIG = {
@@ -238,6 +295,57 @@ FOLDER_CONFIG = {
     "contract": {"name": "Contracts", "icon": "file-signature"},
     "other": {"name": "Other Documents", "icon": "file"},
 }
+
+
+@router.get("/download-folder")
+def download_folder(
+    folder_type: str = "",
+    current_user: User = Depends(get_current_user),
+    consultation: Consultation = Depends(get_active_consultation),
+    db: Session = Depends(get_db),
+):
+    """Download documents as a ZIP file, optionally filtered by folder type."""
+    from app.modules.documents.models import Document as DocModel
+
+    query = db.query(DocModel).filter(DocModel.consultation_id == consultation.id)
+    if folder_type:
+        query = query.filter(DocModel.document_type == folder_type)
+    documents = query.all()
+
+    if not documents:
+        raise HTTPException(status_code=404, detail="No documents found")
+
+    s3 = services.get_s3_client()
+    buffer = io.BytesIO()
+
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as zf:
+        for doc in documents:
+            # Smart rename
+            smart_name = _smart_rename(doc)
+            folder = FOLDER_CONFIG.get(doc.document_type or "other", {"name": "Other"})[
+                "name"
+            ]
+            zip_path = f"{folder}/{smart_name}"
+
+            # Download from S3
+            try:
+                from app.config import settings as app_settings
+
+                response = s3.get_object(
+                    Bucket=app_settings.AWS_S3_BUCKET, Key=doc.s3_key
+                )
+                file_data = response["Body"].read()
+                zf.writestr(zip_path, file_data)
+            except Exception:
+                continue  # Skip files that fail to download
+
+    buffer.seek(0)
+    filename = f"{folder_type or 'All_Documents'}.zip"
+    return Response(
+        content=buffer.read(),
+        media_type="application/zip",
+        headers={"Content-Disposition": f'attachment; filename="{filename}"'},
+    )
 
 
 @router.get("/organized", response_model=OrganizedDocumentsResponse)

@@ -1,5 +1,6 @@
 import io
 import re
+import time
 from datetime import datetime
 
 from openai import OpenAI
@@ -21,6 +22,30 @@ from sqlalchemy.orm import Session
 from app.config import settings
 from app.modules.chat.models import Message, MessageRole
 from app.modules.knowledge.services import get_knowledge_base_text
+
+# Simple in-memory cache for expensive AI calls
+_cache: dict[str, tuple[float, dict]] = {}
+CACHE_TTL = 3600  # 1 hour
+
+
+def get_cached(key: str) -> dict | None:
+    if key in _cache:
+        ts, data = _cache[key]
+        if time.time() - ts < CACHE_TTL:
+            return data
+        del _cache[key]
+    return None
+
+
+def set_cached(key: str, data: dict):
+    _cache[key] = (time.time(), data)
+
+
+def clear_cache(prefix: str = ""):
+    keys_to_remove = [k for k in _cache if k.startswith(prefix)]
+    for k in keys_to_remove:
+        del _cache[k]
+
 
 SYSTEM_PROMPT_TEMPLATE = """You are a senior UK accountant and tax adviser AI assistant with 20+ years of experience. You have extensive knowledge of UK tax law, HMRC regulations, corporation tax, income tax, VAT, capital gains tax, and business optimization strategies.
 
@@ -304,6 +329,11 @@ def chat_completion_stream(
 
 def generate_health_score(db: Session, consultation_id: int) -> dict:
     """Analyze the knowledge base and generate a business health score."""
+    cache_key = f"health_score:{consultation_id}"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+
     knowledge_base = get_knowledge_base_text(db, consultation_id)
 
     # If no documents uploaded, return defaults
@@ -375,6 +405,7 @@ def generate_health_score(db: Session, consultation_id: int) -> dict:
         recs = []
     data["recommendations"] = [str(r) for r in recs[:5]]
 
+    set_cached(cache_key, data)
     return data
 
 
@@ -443,6 +474,11 @@ def generate_scenario(db: Session, consultation_id: int, scenario_data: dict) ->
 
 def generate_planner(db: Session, consultation_id: int) -> dict:
     """Generate a 12-month tax action plan based on the user's knowledge base."""
+    cache_key = f"planner:{consultation_id}"
+    cached = get_cached(cache_key)
+    if cached:
+        return cached
+
     import json as _json
 
     knowledge_base = get_knowledge_base_text(db, consultation_id)
@@ -541,7 +577,9 @@ def generate_planner(db: Session, consultation_id: int) -> dict:
             )
         months.append({"month": month_name, "actions": actions})
 
-    return {"months": months}
+    result = {"months": months}
+    set_cached(cache_key, result)
+    return result
 
 
 def generate_accountant_briefing(db: Session, consultation_id: int) -> str:

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { motion, AnimatePresence } from "framer-motion";
 import {
@@ -10,9 +10,11 @@ import {
   File,
   FolderOpen,
   Layers,
+  Download,
+  Loader2,
 } from "lucide-react";
 import { cn } from "@/utils/cn";
-import { getOrganizedDocuments } from "@/api/documents";
+import { getOrganizedDocuments, downloadFolder } from "@/api/documents";
 import { DocumentCard } from "./DocumentCard";
 import { Spinner } from "@/components/ui/Spinner";
 
@@ -42,6 +44,27 @@ interface DocumentOrganizerProps {
 
 export function DocumentOrganizer({ onDelete, isDeleting }: DocumentOrganizerProps) {
   const [selectedFolder, setSelectedFolder] = useState<string | null>(null);
+  const [downloading, setDownloading] = useState<string | null>(null);
+
+  const handleDownload = useCallback(async (folderType?: string) => {
+    const key = folderType || "__all__";
+    setDownloading(key);
+    try {
+      const blob = await downloadFolder(folderType);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${folderType || "All_Documents"}.zip`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch {
+      // Download failed silently
+    } finally {
+      setDownloading(null);
+    }
+  }, []);
 
   const { data, isLoading } = useQuery({
     queryKey: ["documents", "organized"],
@@ -81,12 +104,26 @@ export function DocumentOrganizer({ onDelete, isDeleting }: DocumentOrganizerPro
   return (
     <div className="space-y-4">
       {/* Summary header */}
-      <div className="flex items-center gap-2 text-sm text-ds-text-secondary">
-        <Layers className="h-4 w-4" />
-        <span>
-          {data.total_documents} document{data.total_documents !== 1 ? "s" : ""} in{" "}
-          {data.total_folders} folder{data.total_folders !== 1 ? "s" : ""}
-        </span>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2 text-sm text-ds-text-secondary">
+          <Layers className="h-4 w-4" />
+          <span>
+            {data.total_documents} document{data.total_documents !== 1 ? "s" : ""} in{" "}
+            {data.total_folders} folder{data.total_folders !== 1 ? "s" : ""}
+          </span>
+        </div>
+        <button
+          onClick={() => handleDownload()}
+          disabled={downloading === "__all__"}
+          className="flex items-center gap-1.5 rounded-lg border border-ds-border-default bg-ds-bg-surface px-3 py-1.5 text-xs font-medium text-ds-text-secondary hover:text-ds-text-primary hover:bg-ds-bg-secondary transition-colors disabled:opacity-50"
+        >
+          {downloading === "__all__" ? (
+            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+          ) : (
+            <Download className="h-3.5 w-3.5" />
+          )}
+          Download All
+        </button>
       </div>
 
       <div className="flex gap-4 min-h-[400px]">
@@ -139,38 +176,54 @@ export function DocumentOrganizer({ onDelete, isDeleting }: DocumentOrganizerPro
               const isSelected = selectedFolder === folder.type;
 
               return (
-                <button
-                  key={folder.type}
-                  onClick={() => setSelectedFolder(folder.type)}
-                  className={cn(
-                    "w-full flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150",
-                    isSelected
-                      ? "bg-ds-accent-primary/10 border border-ds-accent-primary/20 text-ds-text-accent"
-                      : "hover:bg-ds-bg-surface text-ds-text-secondary hover:text-ds-text-primary border border-transparent"
-                  )}
-                >
-                  <div
+                <div key={folder.type} className="flex items-center gap-1">
+                  <button
+                    onClick={() => setSelectedFolder(folder.type)}
                     className={cn(
-                      "flex h-8 w-8 items-center justify-center rounded-lg border shrink-0",
+                      "flex-1 flex items-center gap-3 rounded-lg px-3 py-2.5 text-left transition-all duration-150",
                       isSelected
-                        ? "bg-ds-accent-primary/20 border-ds-accent-primary/20 text-ds-text-accent"
-                        : colorClasses
+                        ? "bg-ds-accent-primary/10 border border-ds-accent-primary/20 text-ds-text-accent"
+                        : "hover:bg-ds-bg-surface text-ds-text-secondary hover:text-ds-text-primary border border-transparent"
                     )}
                   >
-                    <IconComponent className="h-4 w-4" />
-                  </div>
-                  <span className="text-sm font-medium flex-1 truncate">{folder.name}</span>
-                  <span
-                    className={cn(
-                      "text-xs font-medium rounded-full px-2 py-0.5",
-                      isSelected
-                        ? "bg-ds-accent-primary/20 text-ds-text-accent"
-                        : "bg-ds-bg-surface text-ds-text-muted"
-                    )}
+                    <div
+                      className={cn(
+                        "flex h-8 w-8 items-center justify-center rounded-lg border shrink-0",
+                        isSelected
+                          ? "bg-ds-accent-primary/20 border-ds-accent-primary/20 text-ds-text-accent"
+                          : colorClasses
+                      )}
+                    >
+                      <IconComponent className="h-4 w-4" />
+                    </div>
+                    <span className="text-sm font-medium flex-1 truncate">{folder.name}</span>
+                    <span
+                      className={cn(
+                        "text-xs font-medium rounded-full px-2 py-0.5",
+                        isSelected
+                          ? "bg-ds-accent-primary/20 text-ds-text-accent"
+                          : "bg-ds-bg-surface text-ds-text-muted"
+                      )}
+                    >
+                      {folder.count}
+                    </span>
+                  </button>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDownload(folder.type);
+                    }}
+                    disabled={downloading === folder.type}
+                    className="shrink-0 flex h-7 w-7 items-center justify-center rounded-md text-ds-text-muted hover:text-ds-text-primary hover:bg-ds-bg-surface transition-colors disabled:opacity-50"
+                    title={`Download ${folder.name} as ZIP`}
                   >
-                    {folder.count}
-                  </span>
-                </button>
+                    {downloading === folder.type ? (
+                      <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Download className="h-3.5 w-3.5" />
+                    )}
+                  </button>
+                </div>
               );
             })}
           </div>
