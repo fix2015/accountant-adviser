@@ -1,0 +1,91 @@
+from fastapi import APIRouter, Depends, HTTPException, Request, status
+from sqlalchemy.orm import Session
+import stripe
+
+from app.config import settings
+from app.database import get_db
+from app.dependencies import get_current_user
+from app.modules.users.models import User
+from app.modules.payments.models import PaymentType
+from app.modules.payments.schemas import (
+    CreateCheckoutRequest,
+    CheckoutResponse,
+    PaymentResponse,
+    PaymentListResponse,
+    ConsultationResponse,
+    ConsultationListResponse,
+)
+from app.modules.payments import services
+
+router = APIRouter(prefix="/payments", tags=["payments"])
+
+
+@router.post("/checkout", response_model=CheckoutResponse)
+def create_checkout(
+    data: CreateCheckoutRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    if (
+        data.payment_type == PaymentType.EXTRA_QUESTIONS
+        and not data.consultation_id
+    ):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="consultation_id is required for extra_questions payment",
+        )
+    checkout_url, session_id = services.create_checkout_session(
+        db=db,
+        user_id=current_user.id,
+        payment_type=data.payment_type,
+        success_url=data.success_url,
+        cancel_url=data.cancel_url,
+        consultation_id=data.consultation_id,
+    )
+    return CheckoutResponse(checkout_url=checkout_url, session_id=session_id)
+
+
+@router.post("/webhook", include_in_schema=False)
+async def stripe_webhook(request: Request, db: Session = Depends(get_db)):
+    payload = await request.body()
+    sig_header = request.headers.get("stripe-signature")
+
+    try:
+        event = stripe.Webhook.construct_event(
+            payload, sig_header, settings.STRIPE_WEBHOOK_SECRET
+        )
+    except ValueError:
+        raise HTTPException(status_code=400, detail="Invalid payload")
+    except stripe.error.SignatureVerificationError:
+        raise HTTPException(status_code=400, detail="Invalid signature")
+
+    if event["type"] == "checkout.session.completed":
+        services.handle_checkout_completed(db, event["data"]["object"])
+    elif event["type"] == "checkout.session.async_payment_failed":
+        services.handle_payment_failed(db, event["data"]["object"])
+
+    return {"status": "ok"}
+
+
+@router.get("/my-payments", response_model=PaymentListResponse)
+def my_payments(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    payments, total = services.get_user_payments(db, current_user.id, skip, limit)
+    return PaymentListResponse(payments=payments, total=total)
+
+
+@router.get("/my-consultations", response_model=ConsultationListResponse)
+def my_consultations(
+    skip: int = 0,
+    limit: int = 50,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    consultations, total = services.get_user_consultations(
+        db, current_user.id, skip, limit
+    )
+    return ConsultationListResponse(consultations=consultations, total=total)

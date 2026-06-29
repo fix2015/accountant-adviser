@@ -1,0 +1,126 @@
+import { useEffect, useRef } from "react";
+import { Link } from "react-router-dom";
+import { ChatMessage, StreamingMessage } from "./ChatMessage";
+import { ChatInput } from "./ChatInput";
+import { QuestionCounter } from "./QuestionCounter";
+import { useChat } from "@/hooks/useChat";
+import { useAuth } from "@/hooks/useAuth";
+import { Button } from "@/components/ui/Button";
+import { Bot, Sparkles } from "lucide-react";
+
+export function ChatWindow() {
+  const { user, refreshUser } = useAuth();
+  const { messages, isStreaming, streamingContent, error, sendMessage, stopStreaming, loadHistory } = useChat();
+  const scrollRef = useRef<HTMLDivElement>(null);
+
+  const questionsUsed = user ? 50 - (user.questions_remaining || 0) : 0;
+  const questionsTotal = 50;
+  const isOutOfQuestions = (user?.questions_remaining || 0) <= 0;
+
+  useEffect(() => {
+    loadHistory();
+  }, [loadHistory]);
+
+  useEffect(() => {
+    if (scrollRef.current) {
+      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+    }
+  }, [messages, streamingContent]);
+
+  const handleSend = (content: string) => {
+    sendMessage(content);
+    refreshUser();
+  };
+
+  return (
+    <div className="flex h-full flex-col">
+      {/* Header */}
+      <div className="flex items-center justify-between border-b border-ds-border-default px-6 py-3 bg-ds-bg-secondary/50 backdrop-blur-md">
+        <div className="flex items-center gap-3">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-ds-accent-primary to-ds-accent-secondary">
+            <Bot className="h-5 w-5 text-white" />
+          </div>
+          <div>
+            <h2 className="text-sm font-semibold text-ds-text-primary">AI Tax Adviser</h2>
+            <p className="text-xs text-ds-feedback-success flex items-center gap-1">
+              <span className="h-1.5 w-1.5 rounded-full bg-ds-feedback-success inline-block" />
+              Online
+            </p>
+          </div>
+        </div>
+        <QuestionCounter used={questionsUsed} total={questionsTotal} className="w-48" />
+      </div>
+
+      {/* Messages */}
+      <div ref={scrollRef} className="flex-1 overflow-auto p-6 space-y-6">
+        {messages.length === 0 && !isStreaming && (
+          <div className="flex flex-col items-center justify-center h-full text-center">
+            <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-gradient-to-br from-ds-accent-primary/20 to-ds-accent-secondary/20 border border-ds-accent-primary/20 mb-6">
+              <Sparkles className="h-8 w-8 text-ds-text-accent" />
+            </div>
+            <h3 className="text-xl font-semibold text-ds-text-primary mb-2">
+              Start Your Tax Consultation
+            </h3>
+            <p className="text-sm text-ds-text-secondary max-w-md mb-8">
+              Ask me anything about your UK tax situation. I have been trained on millions of
+              company records and current UK tax legislation.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-w-lg w-full">
+              {[
+                "What tax deductions can I claim as a freelancer?",
+                "How can I optimise my corporation tax?",
+                "Explain IR35 rules for contractors",
+                "What allowable expenses should I track?",
+              ].map((suggestion) => (
+                <button
+                  key={suggestion}
+                  onClick={() => handleSend(suggestion)}
+                  className="text-left text-xs text-ds-text-secondary rounded-xl border border-ds-border-default p-3 hover:border-ds-border-accent hover:text-ds-text-primary hover:bg-ds-bg-surface/50 transition-all duration-200"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {messages.map((msg) => (
+          <ChatMessage key={msg.id} message={msg} />
+        ))}
+
+        {isStreaming && streamingContent && (
+          <StreamingMessage content={streamingContent} />
+        )}
+
+        {error && (
+          <div className="mx-auto max-w-md rounded-xl border border-ds-feedback-error/30 bg-ds-feedback-error/10 p-4 text-center">
+            <p className="text-sm text-ds-feedback-error">{error}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Out of questions CTA */}
+      {isOutOfQuestions && (
+        <div className="border-t border-ds-border-default bg-ds-bg-tertiary/80 px-6 py-4 text-center">
+          <p className="text-sm text-ds-text-secondary mb-3">
+            You have used all your questions. Purchase 50 more to continue.
+          </p>
+          <Link to="/dashboard">
+            <Button variant="glow" size="md">
+              Buy 50 More Questions for £50
+            </Button>
+          </Link>
+        </div>
+      )}
+
+      {/* Input */}
+      <ChatInput
+        onSend={handleSend}
+        onStop={stopStreaming}
+        isStreaming={isStreaming}
+        disabled={isOutOfQuestions}
+        placeholder={isOutOfQuestions ? "Purchase more questions to continue..." : undefined}
+      />
+    </div>
+  );
+}

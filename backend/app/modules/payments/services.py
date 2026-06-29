@@ -1,0 +1,155 @@
+import stripe
+from sqlalchemy.orm import Session
+
+from app.config import settings
+from app.modules.payments.models import (
+    Payment,
+    PaymentStatus,
+    PaymentType,
+    Consultation,
+    ConsultationStatus,
+)
+
+stripe.api_key = settings.STRIPE_SECRET_KEY
+
+
+def create_checkout_session(
+    db: Session,
+    user_id: int,
+    payment_type: PaymentType,
+    success_url: str,
+    cancel_url: str,
+    consultation_id: int | None = None,
+) -> tuple[str, str]:
+    if payment_type == PaymentType.CONSULTATION:
+        amount = settings.STRIPE_CONSULTATION_PRICE
+        product_name = "AI Accountant Consultation (50 Questions)"
+    else:
+        amount = settings.STRIPE_EXTRA_QUESTIONS_PRICE
+        product_name = "Extra Questions Pack (50 Questions)"
+
+    session = stripe.checkout.Session.create(
+        payment_method_types=["card"],
+        line_items=[
+            {
+                "price_data": {
+                    "currency": "gbp",
+                    "product_data": {"name": product_name},
+                    "unit_amount": amount,
+                },
+                "quantity": 1,
+            }
+        ],
+        mode="payment",
+        success_url=success_url + "?session_id={CHECKOUT_SESSION_ID}",
+        cancel_url=cancel_url,
+        metadata={
+            "user_id": str(user_id),
+            "payment_type": payment_type.value,
+            "consultation_id": str(consultation_id) if consultation_id else "",
+        },
+    )
+
+    payment = Payment(
+        user_id=user_id,
+        stripe_session_id=session.id,
+        amount=amount,
+        currency="gbp",
+        status=PaymentStatus.PENDING,
+        payment_type=payment_type,
+    )
+    db.add(payment)
+    db.commit()
+
+    return session.url, session.id
+
+
+def handle_checkout_completed(db: Session, session: dict) -> None:
+    stripe_session_id = session["id"]
+    payment = (
+        db.query(Payment)
+        .filter(Payment.stripe_session_id == stripe_session_id)
+        .first()
+    )
+    if not payment:
+        return
+
+    payment.status = PaymentStatus.COMPLETED
+    payment.stripe_payment_intent_id = session.get("payment_intent")
+
+    metadata = session.get("metadata", {})
+    payment_type = metadata.get("payment_type")
+    user_id = int(metadata.get("user_id", payment.user_id))
+
+    if payment_type == PaymentType.CONSULTATION.value:
+        consultation = Consultation(
+            user_id=user_id,
+            payment_id=payment.id,
+            status=ConsultationStatus.ACTIVE,
+            questions_used=0,
+            questions_limit=settings.MAX_FREE_QUESTIONS,
+        )
+        db.add(consultation)
+    elif payment_type == PaymentType.EXTRA_QUESTIONS.value:
+        consultation_id = metadata.get("consultation_id")
+        if consultation_id:
+            consultation = (
+                db.query(Consultation)
+                .filter(Consultation.id == int(consultation_id))
+                .first()
+            )
+            if consultation:
+                consultation.questions_limit += 50
+                if consultation.status == ConsultationStatus.COMPLETED:
+                    consultation.status = ConsultationStatus.ACTIVE
+
+    db.commit()
+
+
+def handle_payment_failed(db: Session, session: dict) -> None:
+    stripe_session_id = session["id"]
+    payment = (
+        db.query(Payment)
+        .filter(Payment.stripe_session_id == stripe_session_id)
+        .first()
+    )
+    if payment:
+        payment.status = PaymentStatus.FAILED
+        db.commit()
+
+
+def get_user_payments(
+    db: Session, user_id: int, skip: int = 0, limit: int = 50
+) -> tuple[list[Payment], int]:
+    query = db.query(Payment).filter(Payment.user_id == user_id)
+    total = query.count()
+    payments = query.order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
+    return payments, total
+
+
+def get_user_consultations(
+    db: Session, user_id: int, skip: int = 0, limit: int = 50
+) -> tuple[list[Consultation], int]:
+    query = db.query(Consultation).filter(Consultation.user_id == user_id)
+    total = query.count()
+    consultations = (
+        query.order_by(Consultation.created_at.desc()).offset(skip).limit(limit).all()
+    )
+    return consultations, total
+
+
+def get_all_payments(
+    db: Session, skip: int = 0, limit: int = 50
+) -> tuple[list[Payment], int]:
+    total = db.query(Payment).count()
+    payments = (
+        db.query(Payment).order_by(Payment.created_at.desc()).offset(skip).limit(limit).all()
+    )
+    return payments, total
+
+
+def increment_question_count(db: Session, consultation: Consultation) -> None:
+    consultation.questions_used += 1
+    if consultation.questions_used >= consultation.questions_limit:
+        consultation.status = ConsultationStatus.COMPLETED
+    db.commit()
