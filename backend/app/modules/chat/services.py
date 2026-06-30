@@ -483,6 +483,58 @@ def generate_planner(db: Session, consultation_id: int) -> dict:
 
     knowledge_base = get_knowledge_base_text(db, consultation_id)
 
+    # If no documents uploaded, return generic HMRC deadlines without calling OpenAI
+    if "No documents" in knowledge_base:
+        generic = {
+            "months": [
+                {
+                    "month": "April 2026",
+                    "actions": [
+                        {
+                            "title": "New tax year begins",
+                            "description": "Review your salary and dividend strategy for 2026/27. Upload your financial documents to get a personalised plan.",
+                            "deadline": "2026-04-06",
+                            "priority": "high",
+                        },
+                    ],
+                },
+                {
+                    "month": "July 2026",
+                    "actions": [
+                        {
+                            "title": "Second payment on account",
+                            "description": "Pay second instalment of income tax for 2025/26",
+                            "deadline": "2026-07-31",
+                            "priority": "high",
+                        },
+                    ],
+                },
+                {
+                    "month": "October 2026",
+                    "actions": [
+                        {
+                            "title": "Paper Self Assessment deadline",
+                            "description": "Submit paper Self Assessment return for 2025/26",
+                            "deadline": "2026-10-31",
+                            "priority": "medium",
+                        },
+                    ],
+                },
+                {
+                    "month": "January 2027",
+                    "actions": [
+                        {
+                            "title": "Self Assessment deadline",
+                            "description": "Submit online 2025/26 Self Assessment and pay balancing payment. Upload your documents to get tailored deadline reminders.",
+                            "deadline": "2027-01-31",
+                            "priority": "high",
+                        },
+                    ],
+                },
+            ]
+        }
+        return generic
+
     prompt = (
         "Generate a 12-month UK tax action plan for this business. "
         "Return ONLY valid JSON array with no markdown formatting, no code fences, no explanation.\n\n"
