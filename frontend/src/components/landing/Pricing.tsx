@@ -43,7 +43,7 @@ export function Pricing() {
             Simple, Transparent Pricing
           </h2>
           <p className="mt-4 text-lg text-ds-text-secondary max-w-xl mx-auto">
-            Cheaper than 10 minutes with a human accountant. Choose the plan that suits you.
+            97% cheaper than a human accountant. Same quality advice, powered by 100,000+ UK cases.
           </p>
         </motion.div>
 
@@ -106,7 +106,7 @@ export function Pricing() {
                 <span className="text-ds-text-muted">one-time</span>
               </div>
               <p className="mt-3 text-sm text-ds-text-secondary">
-                Everything you need for a complete AI-powered tax review.
+                Our proprietary AI analyses your data against 100,000+ real UK cases.
               </p>
 
               <ul className="mt-8 space-y-3">

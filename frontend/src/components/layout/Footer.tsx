@@ -14,9 +14,9 @@ export function Footer() {
               </div>
               <span className="text-lg font-bold text-ds-text-primary">AI Accountant Adviser</span>
             </div>
-            <p className="text-sm text-ds-text-muted max-w-md leading-relaxed">
-              AI-powered tax consultation for UK businesses. Get expert advice powered by artificial
-              intelligence trained on millions of company financial records.
+            <p className="text-sm text-ds-text-secondary max-w-md leading-relaxed">
+              The UK's smartest AI tax adviser — built on a proprietary model trained on 100,000+ real
+              UK accounting cases. Expert-level advice in seconds, not weeks.
             </p>
             <p className="mt-4 text-xs text-ds-text-muted leading-relaxed">
               Disclaimer: AI Accountant Adviser provides AI-generated guidance for informational purposes
@@ -32,6 +32,7 @@ export function Footer() {
               <li><a href="#features" className="text-sm text-ds-text-muted hover:text-ds-text-primary transition-colors">Features</a></li>
               <li><a href="#pricing" className="text-sm text-ds-text-muted hover:text-ds-text-primary transition-colors">Pricing</a></li>
               <li><a href="#how-it-works" className="text-sm text-ds-text-muted hover:text-ds-text-primary transition-colors">How It Works</a></li>
+              <li><a href="#why-ai" className="text-sm text-ds-text-muted hover:text-ds-text-primary transition-colors">Why AI</a></li>
             </ul>
           </div>
 
@@ -51,7 +52,7 @@ export function Footer() {
             &copy; {new Date().getFullYear()} AI Accountant Adviser. All rights reserved.
           </p>
           <p className="text-xs text-ds-text-muted">
-            Made in the UK. Not a substitute for professional advice.
+            Made in the UK. Proprietary AI trained on 100,000+ client cases.
           </p>
         </div>
       </div>

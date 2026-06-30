@@ -1,0 +1,42 @@
+echo "Running pre-push lint checks..."
+
+# Load nvm if available (needed for correct Node version)
+export NVM_DIR="$HOME/.nvm"
+[ -s "$NVM_DIR/nvm.sh" ] && . "$NVM_DIR/nvm.sh"
+
+# Use Node 20 for ESLint compatibility
+nvm use 20 --silent 2>/dev/null || true
+
+# Frontend lint
+echo ">> Frontend: TypeScript check..."
+cd frontend && npx tsc --noEmit
+if [ $? -ne 0 ]; then
+  echo "TypeScript check failed. Push aborted."
+  exit 1
+fi
+
+echo ">> Frontend: ESLint..."
+npm run lint
+if [ $? -ne 0 ]; then
+  echo "ESLint failed. Push aborted."
+  exit 1
+fi
+
+cd ..
+
+# Backend lint
+echo ">> Backend: ruff check..."
+cd backend && python3 -m ruff check .
+if [ $? -ne 0 ]; then
+  echo "Ruff check failed. Push aborted."
+  exit 1
+fi
+
+echo ">> Backend: ruff format check..."
+python3 -m ruff format --check .
+if [ $? -ne 0 ]; then
+  echo "Ruff format check failed. Push aborted."
+  exit 1
+fi
+
+echo "All lint checks passed!"

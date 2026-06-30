@@ -17,7 +17,7 @@ const steps = [
   {
     icon: Brain,
     title: "AI Analyses Everything",
-    description: "Our AI processes your data against millions of company records to find opportunities.",
+    description: "Our proprietary AI — trained on 100,000+ UK cases — analyses your data to find hidden savings.",
     color: "from-violet-500 to-violet-600",
   },
   {
@@ -58,7 +58,7 @@ export function HowItWorks() {
             >
               <div className="glass rounded-2xl p-6 h-full hover:border-ds-border-strong transition-all duration-300 hover:-translate-y-1">
                 {/* Step number */}
-                <div className="absolute -top-3 -left-1 flex h-7 w-7 items-center justify-center rounded-full bg-ds-bg-primary border border-ds-border-strong text-xs font-bold text-ds-text-accent">
+                <div className="absolute -top-3 -left-1 flex h-7 w-7 items-center justify-center rounded-full bg-white border border-ds-border-strong text-xs font-bold text-ds-text-accent shadow-sm">
                   {i + 1}
                 </div>
 

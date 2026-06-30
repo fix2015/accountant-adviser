@@ -17,7 +17,7 @@ export function Header() {
   };
 
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 border-b border-ds-border-default/50 bg-ds-bg-primary/80 backdrop-blur-xl">
+    <header className="fixed top-0 left-0 right-0 z-50 border-b border-ds-border-default/50 bg-white/80 backdrop-blur-xl">
       <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-4 sm:px-6 lg:px-8">
         <Link to="/" className="flex items-center gap-2.5 group">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-ds-accent-primary to-ds-accent-secondary shadow-lg shadow-ds-accent-primary/20 group-hover:shadow-ds-accent-primary/40 transition-shadow">
@@ -40,6 +40,9 @@ export function Header() {
               </a>
               <a href="#how-it-works" className="text-sm text-ds-text-secondary hover:text-ds-text-primary transition-colors">
                 How It Works
+              </a>
+              <a href="#why-ai" className="text-sm text-ds-text-secondary hover:text-ds-text-primary transition-colors">
+                Why AI
               </a>
               <Link to="/login">
                 <Button variant="ghost" size="sm">Sign In</Button>
@@ -94,6 +97,7 @@ export function Header() {
             <>
               <a href="#features" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-ds-text-secondary hover:text-ds-text-primary">Features</a>
               <a href="#pricing" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-ds-text-secondary hover:text-ds-text-primary">Pricing</a>
+              <a href="#why-ai" onClick={() => setMobileOpen(false)} className="px-3 py-2 text-sm text-ds-text-secondary hover:text-ds-text-primary">Why AI</a>
               <Link to="/login" onClick={() => setMobileOpen(false)}>
                 <Button variant="ghost" size="sm" className="w-full">Sign In</Button>
               </Link>

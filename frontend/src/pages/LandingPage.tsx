@@ -4,6 +4,7 @@ import { Hero } from "@/components/landing/Hero";
 import { Stats } from "@/components/landing/Stats";
 import { HowItWorks } from "@/components/landing/HowItWorks";
 import { Features } from "@/components/landing/Features";
+import { WhyAI } from "@/components/landing/WhyAI";
 import { Calculator } from "@/components/landing/Calculator";
 import { Pricing } from "@/components/landing/Pricing";
 import { Demo } from "@/components/landing/Demo";
@@ -17,6 +18,7 @@ export function LandingPage() {
       <Header />
       <Hero />
       <Stats />
+      <WhyAI />
       <HowItWorks />
       <Features />
       <Calculator />

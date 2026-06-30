@@ -66,7 +66,7 @@ export function Testimonials() {
             Trusted by UK Businesses
           </h2>
           <p className="mt-4 text-lg text-ds-text-secondary max-w-xl mx-auto">
-            See what our clients are saying about their AI tax consultation experience.
+            Join 100,000+ UK businesses who chose AI over expensive accountants.
           </p>
         </motion.div>
 

@@ -119,7 +119,7 @@ function ChatDemo() {
           <div className="max-w-[80%] rounded-2xl rounded-tr-sm bg-gradient-to-br from-ds-accent-primary to-ds-accent-secondary px-4 py-3 text-white text-sm leading-relaxed">
             {userQuestion}
           </div>
-          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-ds-bg-surface border border-ds-border-default">
+          <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-ds-bg-tertiary border border-ds-border-default">
             <User className="h-4 w-4 text-ds-text-muted" />
           </div>
         </motion.div>
@@ -134,7 +134,7 @@ function ChatDemo() {
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-ds-accent-primary to-ds-accent-secondary">
             <Bot className="h-4 w-4 text-white" />
           </div>
-          <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-ds-bg-surface border border-ds-border-default px-4 py-3 text-sm text-ds-text-secondary leading-relaxed whitespace-pre-wrap">
+          <div className="max-w-[85%] rounded-2xl rounded-tl-sm bg-ds-bg-tertiary border border-ds-border-default px-4 py-3 text-sm text-ds-text-secondary leading-relaxed whitespace-pre-wrap">
             {displayedText.split("\n").map((line, i) => {
               // Bold lines
               const boldMatch = line.match(/^\*\*(.+?)\*\*$/);
@@ -226,13 +226,13 @@ function GraphDemo() {
       ctx.font = "4px Inter, sans-serif";
       ctx.textAlign = "center";
       ctx.textBaseline = "top";
-      ctx.fillStyle = "#9CA3AF";
+      ctx.fillStyle = "#475569";
       ctx.fillText(node.label, node.x, node.y + size + 4);
     }
   }, []);
 
   return (
-    <div ref={containerRef} className="relative h-[420px] rounded-xl overflow-hidden bg-ds-bg-primary">
+    <div ref={containerRef} className="relative h-[420px] rounded-xl overflow-hidden bg-ds-bg-tertiary">
       <ForceGraph2D
         graphData={demoGraphData}
         width={dimensions.width}
@@ -247,7 +247,7 @@ function GraphDemo() {
           ctx.fillStyle = color;
           ctx.fill();
         }}
-        linkColor={() => "rgba(59, 130, 246, 0.2)"}
+        linkColor={() => "rgba(37, 99, 235, 0.25)"}
         linkWidth={() => 1.5}
         cooldownTicks={100}
         d3AlphaDecay={0.02}
@@ -388,7 +388,7 @@ export function Demo() {
             <span className="text-gradient">£10</span>
           </h2>
           <p className="mt-4 text-lg text-ds-text-secondary max-w-xl mx-auto">
-            Try our interactive demo. No signup required.
+            See our proprietary AI in action. No signup required.
           </p>
         </motion.div>
 
