@@ -1,6 +1,5 @@
 import io
 import re
-import time
 from datetime import datetime
 
 from openai import OpenAI
@@ -23,22 +22,17 @@ from app.config import settings
 from app.modules.chat.models import Message, MessageRole
 from app.modules.knowledge.services import get_knowledge_base_text
 
-# Simple in-memory cache for expensive AI calls
-_cache: dict[str, tuple[float, dict]] = {}
-CACHE_TTL = 3600  # 1 hour
+# In-memory cache for expensive AI calls — no TTL expiry.
+# Cache is invalidated explicitly when documents are uploaded or deleted.
+_cache: dict[str, dict] = {}
 
 
 def get_cached(key: str) -> dict | None:
-    if key in _cache:
-        ts, data = _cache[key]
-        if time.time() - ts < CACHE_TTL:
-            return data
-        del _cache[key]
-    return None
+    return _cache.get(key)
 
 
 def set_cached(key: str, data: dict):
-    _cache[key] = (time.time(), data)
+    _cache[key] = data
 
 
 def clear_cache(prefix: str = ""):

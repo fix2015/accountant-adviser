@@ -261,7 +261,7 @@ export function DashboardPage() {
       />
 
       {/* Business Health Score */}
-      <HealthScore />
+      <HealthScore documentCount={documents.length} />
 
       {/* Welcome header */}
       <div>

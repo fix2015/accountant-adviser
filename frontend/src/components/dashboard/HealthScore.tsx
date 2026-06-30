@@ -188,7 +188,7 @@ function HealthScoreSkeleton() {
   );
 }
 
-export function HealthScore() {
+export function HealthScore({ documentCount = 0 }: { documentCount?: number }) {
   const navigate = useNavigate();
   const [data, setData] = useState<HealthScoreResponse | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,13 +196,13 @@ export function HealthScore() {
   const [error, setError] = useState<string | null>(null);
 
   const fetchScore = useCallback(async (isRefresh = false) => {
-    // Check cache first (1 hour TTL)
+    // Check cache — invalidate if document count changed
     if (!isRefresh) {
       try {
         const cached = localStorage.getItem("health_score_cache");
         if (cached) {
-          const { data: cachedData, timestamp } = JSON.parse(cached);
-          if (Date.now() - timestamp < 1000 * 60 * 60) {
+          const { data: cachedData, docCount } = JSON.parse(cached);
+          if (docCount === documentCount) {
             setData(cachedData);
             setLoading(false);
             return;
@@ -218,7 +218,7 @@ export function HealthScore() {
     try {
       const result = await getHealthScore();
       setData(result);
-      localStorage.setItem("health_score_cache", JSON.stringify({ data: result, timestamp: Date.now() }));
+      localStorage.setItem("health_score_cache", JSON.stringify({ data: result, docCount: documentCount }));
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to load health score";
       setError(msg);
@@ -226,7 +226,7 @@ export function HealthScore() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [documentCount]);
 
   useEffect(() => {
     fetchScore();

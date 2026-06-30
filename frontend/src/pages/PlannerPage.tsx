@@ -6,28 +6,28 @@ import { Button } from "@/components/ui/Button";
 import { Spinner } from "@/components/ui/Spinner";
 import { useToast } from "@/components/ui/Toast";
 import { getPlanner } from "@/api/chat";
+import { useDocuments } from "@/hooks/useDocuments";
 import type { PlannerMonth, PlannerAction } from "@/types";
 
 const CACHE_KEY = "planner_cache";
-const CACHE_TTL = 1000 * 60 * 60; // 1 hour
 
-function getCachedPlanner(): PlannerMonth[] | null {
+function getCachedPlanner(docCount: number): PlannerMonth[] | null {
   try {
     const raw = localStorage.getItem(CACHE_KEY);
     if (!raw) return null;
-    const { months, timestamp } = JSON.parse(raw);
-    if (Date.now() - timestamp > CACHE_TTL) {
+    const parsed = JSON.parse(raw);
+    if (parsed.docCount !== docCount) {
       localStorage.removeItem(CACHE_KEY);
       return null;
     }
-    return months;
+    return parsed.months;
   } catch {
     return null;
   }
 }
 
-function setCachedPlanner(months: PlannerMonth[]) {
-  localStorage.setItem(CACHE_KEY, JSON.stringify({ months, timestamp: Date.now() }));
+function setCachedPlanner(months: PlannerMonth[], docCount: number) {
+  localStorage.setItem(CACHE_KEY, JSON.stringify({ months, docCount }));
 }
 
 function generateICSEvent(action: PlannerAction, monthStr: string): string {
@@ -263,10 +263,12 @@ export function PlannerPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { toast } = useToast();
+  const { documents } = useDocuments();
+  const docCount = documents?.length ?? 0;
 
   const loadPlanner = useCallback(async (force = false) => {
     if (!force) {
-      const cached = getCachedPlanner();
+      const cached = getCachedPlanner(docCount);
       if (cached) {
         setMonths(cached);
         setLoading(false);
@@ -277,14 +279,14 @@ export function PlannerPage() {
     try {
       const data = await getPlanner();
       setMonths(data.months);
-      setCachedPlanner(data.months);
+      setCachedPlanner(data.months, docCount);
     } catch {
       setError("Failed to generate tax planner");
     } finally {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [docCount]);
 
   useEffect(() => {
     loadPlanner();
