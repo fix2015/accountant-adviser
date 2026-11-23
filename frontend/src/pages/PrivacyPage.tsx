@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { COMPANY } from "@/config/company";
 
 export function PrivacyPage() {
   return (
@@ -8,7 +9,7 @@ export function PrivacyPage() {
       <div className="pt-24 pb-16">
         <div className="mx-auto max-w-3xl px-4 sm:px-6 lg:px-8">
           <h1 className="text-3xl font-bold text-ds-text-primary mb-2">Privacy Policy</h1>
-          <p className="text-sm text-ds-text-muted mb-10">Last updated: January 2026</p>
+          <p className="text-sm text-ds-text-muted mb-10">Last updated: 23 November 2026</p>
 
           <div className="space-y-8 text-sm text-ds-text-secondary leading-relaxed">
             <section>
@@ -17,6 +18,11 @@ export function PrivacyPage() {
                 AI Accountant Adviser ("we", "us", "our") is committed to protecting your privacy.
                 This Privacy Policy explains how we collect, use, store, and protect your personal
                 data when you use our Service.
+              </p>
+              <p className="mt-3">
+                AI Accountant Adviser is run by {COMPANY.name}, the data controller for your personal
+                data: a company registered in England and Wales, number {COMPANY.number}, registered
+                office {COMPANY.address}.
               </p>
             </section>
 
@@ -45,10 +51,10 @@ export function PrivacyPage() {
             <section>
               <h2 className="text-lg font-semibold text-ds-text-primary mb-3">4. Data Storage and Security</h2>
               <p>
-                Your documents and data are stored encrypted on <strong className="text-ds-text-primary">Amazon Web Services (AWS)</strong> in
-                the EU-West-2 (London) region. We use industry-standard encryption (AES-256) for data
-                at rest and TLS 1.3 for data in transit. Access to data is strictly controlled and
-                monitored.
+                Your account, chat history and analysis results are stored in our database on{" "}
+                <strong className="text-ds-text-primary">Amazon Web Services (AWS)</strong> servers in
+                the USA (us-east-1). Uploaded documents are stored on AWS S3 in the EU (Frankfurt,
+                eu-central-1). Data travels over HTTPS, and access to it is restricted to us.
               </p>
             </section>
 
@@ -59,9 +65,15 @@ export function PrivacyPage() {
               </p>
               <ul className="list-disc pl-5 space-y-2 mt-2">
                 <li>Stripe for payment processing.</li>
-                <li>AWS for secure cloud storage.</li>
+                <li>AWS for hosting and storage.</li>
+                <li>OpenAI, which processes your questions and documents to produce the AI answers.</li>
                 <li>When required by law or legal proceedings.</li>
               </ul>
+              <p className="mt-3">
+                AWS (USA) and OpenAI (USA) process data outside the UK. These transfers are covered by
+                the UK Extension to the EU–US Data Privacy Framework or the UK International Data
+                Transfer Addendum to the providers’ standard contractual clauses.
+              </p>
             </section>
 
             <section>
@@ -82,8 +94,8 @@ export function PrivacyPage() {
               <p>
                 You can request complete deletion of all your data, including documents, chat history,
                 and account information, at any time by emailing{" "}
-                <a href="mailto:support@aiaccountant.co.uk" className="text-ds-text-accent hover:underline">
-                  support@aiaccountant.co.uk
+                <a href={`mailto:${COMPANY.email}`} className="text-ds-text-accent hover:underline">
+                  {COMPANY.email}
                 </a>
                 . We will process your request within 30 days.
               </p>
@@ -110,11 +122,12 @@ export function PrivacyPage() {
             <section>
               <h2 className="text-lg font-semibold text-ds-text-primary mb-3">10. Contact</h2>
               <p>
-                For privacy-related queries or to exercise your rights, contact our Data Protection
-                Officer at{" "}
-                <a href="mailto:privacy@aiaccountant.co.uk" className="text-ds-text-accent hover:underline">
-                  privacy@aiaccountant.co.uk
+                For privacy-related queries or to exercise your rights, email{" "}
+                <a href={`mailto:${COMPANY.email}`} className="text-ds-text-accent hover:underline">
+                  {COMPANY.email}
                 </a>
+                . You can also complain to the Information Commissioner’s Office (ico.org.uk, 0303 123
+                1113).
               </p>
             </section>
           </div>

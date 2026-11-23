@@ -1,5 +1,6 @@
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
+import { COMPANY } from "@/config/company";
 
 export function TermsPage() {
   return (
@@ -98,9 +99,11 @@ export function TermsPage() {
               <h2 className="text-lg font-semibold text-ds-text-primary mb-3">10. Contact</h2>
               <p>
                 For questions about these Terms, please contact us at{" "}
-                <a href="mailto:support@aiaccountant.co.uk" className="text-ds-text-accent hover:underline">
-                  support@aiaccountant.co.uk
+                <a href={`mailto:${COMPANY.email}`} className="text-ds-text-accent hover:underline">
+                  {COMPANY.email}
                 </a>
+                . The Service is provided by {COMPANY.name}, company number {COMPANY.number},
+                registered office {COMPANY.address}
               </p>
             </section>
           </div>

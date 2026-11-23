@@ -25,13 +25,14 @@ export function PrivacyModal({ isOpen, onClose }: PrivacyModalProps) {
         </p>
         <h3 className="text-ds-text-primary font-semibold">3. Data Storage</h3>
         <p>
-          Documents and analysis data are stored encrypted on Amazon Web Services (AWS) S3 in the
-          EU-West-2 (London) region. Chat histories are stored in our secured database.
+          Uploaded documents are stored on Amazon Web Services (AWS) S3 in the EU (Frankfurt). Your
+          account, chat history and analysis results are stored in our database on AWS servers in the
+          USA. Questions and documents are processed by OpenAI to produce the AI answers.
         </p>
         <h3 className="text-ds-text-primary font-semibold">4. Right to Deletion</h3>
         <p>
           You can request deletion of all your data at any time by contacting
-          support@aiaccountant.co.uk. We will process your request within 30 days.
+          frontendappdevelopment@gmail.com. We will process your request within 30 days.
         </p>
         <h3 className="text-ds-text-primary font-semibold">5. GDPR Compliance</h3>
         <p>
